@@ -4,7 +4,7 @@ Jami (https://jami.net) is a privacy-preserving peer-to-peer communication appli
 
 `jami-commander` (`jc` for short) is a simple but convenient CLI-based Jami client app for setting up accounts and swarms as well as sending.
 
-`jami-commander` helps to set up a Jami account, configure the account and send messages and files to Jami peers. It provides the minimal set of commands to use `Jami` from the CLI. 
+`jami-commander` helps to set up a Jami account, configure the account and send messages and files to Jami peers. It provides the minimal set of commands to use `Jami` from the CLI.
 
 The objective of `jami-commander` is to:
 
@@ -15,3 +15,19 @@ The objective of `jami-commander` is to:
 + be simple. It is written in Python.
 
 Functionality is minimal. You are invited to help to improve `jami-commander`. Pull requests are welcome.
+
+# Installation and Prerequisites
+
++ `jami-commander` is only a client. It requires the Jami `jamid` daemon to run to performs the work.
++ install `jami-commander`
+  + `pip jami-commander`
+  + see also https://pypi.org/pypi/jami-commander
++ install Jami daemon `jamid` as follows:
+  + e.g. on Fedora 40, similar on Ubuntu 24.04, etc.
+  + `sudo dnf-3 config-manager --add-repo https://dl.jami.net/stable/fedora_40/jami-stable.repo # add the Jami repo`
+  + `sudo dnf install jami-daemon # install only the jamid daemon`
++ run the `jamid` daemon:
+  + e.g. on Fedora 40, similar on Ubuntu 24.04, etc.
+  + `/usr/libexec/jamid -p & # start the jamid daemon`
++ now you can start and run the `jami-commander`
+  + try `jami-commander -h` first to see what is available

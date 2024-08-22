@@ -172,10 +172,11 @@ cython_debug/
 
 # ignore backups
 README.md.*
-Jami-commander.py.*
-Jami_commander.20*
-/Jami_commander/Jami-commander.py.*
-/Jami_commander/Jami_commander.py.*
+jami-commander.py.*
+jami_commander.20*
+/jami_commander/jami-commander.py.*
+/jami_commander/jami_commander.py.*
+/matrix_commander/jami-commander.py*
 setup.cfg.*
 
 # ignore help file
@@ -192,12 +193,12 @@ j_c
 /scripts/create-help.sh
 
 # ignore cache
-/Jami_commander/__pycache__/
+/jami_commander/__pycache__/
 
 # PyPi build files
 # leave /dist because it is used by Github PyPi-Publish Workflow
 versionnumber.txt
-/Jami_commander.egg-info/
+/jami_commander.egg-info/
 
 # ignore to-do list
 todo.txt
