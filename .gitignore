@@ -10,7 +10,8 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+# leave /dist because it is used by Github PyPi-Publish Workflow
+# dist/
 downloads/
 eggs/
 .eggs/
@@ -160,3 +161,47 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+
+
+# Personal stuff, added Aug 2024
+
+# do not include the media directory.
+/media/
+/media.*/
+
+# ignore backups
+README.md.*
+Jami-commander.py.*
+Jami_commander.20*
+/Jami_commander/Jami-commander.py.*
+/Jami_commander/Jami_commander.py.*
+setup.cfg.*
+
+# ignore help file
+help.txt
+help.txt.*
+
+# ignore soft link
+jc
+j-c
+j_c
+
+# ignore certain scripts
+/scripts/prepare-commit.sh
+/scripts/create-help.sh
+
+# ignore cache
+/Jami_commander/__pycache__/
+
+# PyPi build files
+# leave /dist because it is used by Github PyPi-Publish Workflow
+versionnumber.txt
+/Jami_commander.egg-info/
+
+# ignore to-do list
+todo.txt
+todo.txt.*
+
+# build file used for release
+help.help.pre.txt
