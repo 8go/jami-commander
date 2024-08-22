@@ -1,6 +1,6 @@
 # jami-commander
 
-Jami (https://jami.net) is a privacy-preserving peer-to-peer communication application available on many platforms.
+Jami (https://jami.net) is a privacy-preserving peer-to-peer communication application available on many platforms. `Jami` is in concept similar to `Keet` (https://keet.io), both are peer-to-peer and use servers as little as possible. As a chat app it is similar to `Matrix` (https://http://matrix.org) as both can be self-hosted.
 
 `jami-commander` (`jc` for short) is a simple but convenient CLI-based Jami client app for setting up accounts and swarms as well as sending.
 
