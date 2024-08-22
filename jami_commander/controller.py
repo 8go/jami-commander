@@ -19,6 +19,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA.
 #
 
+# DBUS API specified in:
+# https://git.jami.net/savoirfairelinux/jami-daemon/-/blob/master/bin/dbus/cx.ring.Ring.ConfigurationManager.xml
+
 """libjami controlling class through DBUS"""
 
 import sys
@@ -29,7 +32,12 @@ import hashlib
 
 from threading import Thread
 from functools import partial
-from errorsDring import libjamiCtrlAccountError, libjamiCtrlError, libjamiCtrlDBusError, libjamiCtrlDeamonError
+from errorsDring import (
+    libjamiCtrlAccountError,
+    libjamiCtrlError,
+    libjamiCtrlDBusError,
+    libjamiCtrlDeamonError,
+)
 from gi.repository import GLib
 
 try:
@@ -39,8 +47,8 @@ except ImportError as e:
     raise libjamiCtrlError(str(e))
 
 
-DBUS_DEAMON_OBJECT = 'cx.ring.Ring'
-DBUS_DEAMON_PATH = '/cx/ring/Ring'
+DBUS_DEAMON_OBJECT = "cx.ring.Ring"
+DBUS_DEAMON_PATH = "/cx/ring/Ring"
 
 
 class libjamiCtrl(Thread):
@@ -53,7 +61,7 @@ class libjamiCtrl(Thread):
         self.activeCalls = {}  # list of active calls (known by the client)
         self.activeConferences = {}  # list of active conferences
         self.account = None  # current active account
-        self.name = name # client name
+        self.name = name  # client name
         self.autoAnswer = autoAnswer
 
         self.currentCallId = ""
@@ -70,7 +78,7 @@ class libjamiCtrl(Thread):
 
     def __del__(self):
         self.unregister()
-        #self.loop.quit() # causes exception
+        # self.loop.quit() # causes exception
 
     def stopThread(self):
         self.isStop = True
@@ -87,29 +95,47 @@ class libjamiCtrl(Thread):
         except dbus.DBusException as e:
             raise libjamiCtrlDBusError(str(e))
 
-        if not bus.name_has_owner(DBUS_DEAMON_OBJECT) :
-            raise libjamiCtrlDBusError(("Unable to find %s in DBUS." % DBUS_DEAMON_OBJECT)
-                                     + " Check if jami is running")
+        if not bus.name_has_owner(DBUS_DEAMON_OBJECT):
+            raise libjamiCtrlDBusError(
+                ("Unable to find %s in DBUS." % DBUS_DEAMON_OBJECT)
+                + " Check if jami is running"
+            )
 
         try:
-            proxy_instance = bus.get_object(DBUS_DEAMON_OBJECT,
-                DBUS_DEAMON_PATH+'/Instance', introspect=False)
-            proxy_callmgr = bus.get_object(DBUS_DEAMON_OBJECT,
-                DBUS_DEAMON_PATH+'/CallManager', introspect=False)
-            proxy_confmgr = bus.get_object(DBUS_DEAMON_OBJECT,
-                DBUS_DEAMON_PATH+'/ConfigurationManager', introspect=False)
-            proxy_videomgr = bus.get_object(DBUS_DEAMON_OBJECT,
-                DBUS_DEAMON_PATH+'/VideoManager', introspect=False)
+            proxy_instance = bus.get_object(
+                DBUS_DEAMON_OBJECT,
+                DBUS_DEAMON_PATH + "/Instance",
+                introspect=False,
+            )
+            proxy_callmgr = bus.get_object(
+                DBUS_DEAMON_OBJECT,
+                DBUS_DEAMON_PATH + "/CallManager",
+                introspect=False,
+            )
+            proxy_confmgr = bus.get_object(
+                DBUS_DEAMON_OBJECT,
+                DBUS_DEAMON_PATH + "/ConfigurationManager",
+                introspect=False,
+            )
+            proxy_videomgr = bus.get_object(
+                DBUS_DEAMON_OBJECT,
+                DBUS_DEAMON_PATH + "/VideoManager",
+                introspect=False,
+            )
 
-            self.instance = dbus.Interface(proxy_instance,
-                DBUS_DEAMON_OBJECT+'.Instance')
-            self.callmanager = dbus.Interface(proxy_callmgr,
-                DBUS_DEAMON_OBJECT+'.CallManager')
-            self.configurationmanager = dbus.Interface(proxy_confmgr,
-                DBUS_DEAMON_OBJECT+'.ConfigurationManager')
+            self.instance = dbus.Interface(
+                proxy_instance, DBUS_DEAMON_OBJECT + ".Instance"
+            )
+            self.callmanager = dbus.Interface(
+                proxy_callmgr, DBUS_DEAMON_OBJECT + ".CallManager"
+            )
+            self.configurationmanager = dbus.Interface(
+                proxy_confmgr, DBUS_DEAMON_OBJECT + ".ConfigurationManager"
+            )
             if proxy_videomgr:
-                self.videomanager = dbus.Interface(proxy_videomgr,
-                    DBUS_DEAMON_OBJECT+'.VideoManager')
+                self.videomanager = dbus.Interface(
+                    proxy_videomgr, DBUS_DEAMON_OBJECT + ".VideoManager"
+                )
 
         except dbus.DBusException as e:
             raise libjamiCtrlDBusError("Unable to bind to jami DBus API")
@@ -122,21 +148,42 @@ class libjamiCtrl(Thread):
             raise libjamiCtrlDeamonError("Client registration failed")
 
         try:
-            proxy_callmgr.connect_to_signal('incomingCall', self.onIncomingCall)
-            proxy_callmgr.connect_to_signal('callStateChanged', self.onCallStateChanged)
-            proxy_callmgr.connect_to_signal('conferenceCreated', self.onConferenceCreated)
-            proxy_confmgr.connect_to_signal('accountsChanged', self.onAccountsChanged)
-            proxy_confmgr.connect_to_signal('dataTransferEvent', self.onDataTransferEvent)
-            proxy_confmgr.connect_to_signal('conversationReady', self.onConversationReady)
-            proxy_confmgr.connect_to_signal('conversationRequestReceived', self.onConversationRequestReceived)
-            proxy_confmgr.connect_to_signal('conversationPreferencesUpdated', self.onConversationPreferencesUpdated)
-            proxy_confmgr.connect_to_signal('messageReceived', self.onMessageReceived)
+            proxy_callmgr.connect_to_signal(
+                "incomingCall", self.onIncomingCall
+            )
+            proxy_callmgr.connect_to_signal(
+                "callStateChanged", self.onCallStateChanged
+            )
+            proxy_callmgr.connect_to_signal(
+                "conferenceCreated", self.onConferenceCreated
+            )
+            proxy_confmgr.connect_to_signal(
+                "accountsChanged", self.onAccountsChanged
+            )
+            proxy_confmgr.connect_to_signal(
+                "dataTransferEvent", self.onDataTransferEvent
+            )
+            proxy_confmgr.connect_to_signal(
+                "conversationReady", self.onConversationReady
+            )
+            proxy_confmgr.connect_to_signal(
+                "conversationRequestReceived",
+                self.onConversationRequestReceived,
+            )
+            proxy_confmgr.connect_to_signal(
+                "conversationPreferencesUpdated",
+                self.onConversationPreferencesUpdated,
+            )
+            proxy_confmgr.connect_to_signal(
+                "messageReceived", self.onMessageReceived
+            )
             # Signal triggered when a log is done in the daemon.
-            proxy_confmgr.connect_to_signal('messageSend', self.onMessageSend)
+            proxy_confmgr.connect_to_signal("messageSend", self.onMessageSend)
 
         except dbus.DBusException as e:
-            raise libjamiCtrlDBusError("Unable to connect to jami DBus signals")
-
+            raise libjamiCtrlDBusError(
+                "Unable to connect to jami DBus signals"
+            )
 
     def unregister(self):
         if not self.registered:
@@ -189,69 +236,63 @@ class libjamiCtrl(Thread):
         pass
 
     def onIncomingCall(self, account, callid, to):
-        """ On incoming call event, add the call to the list of active calls """
+        """On incoming call event, add the call to the list of active calls"""
 
-        self.activeCalls[callid] = {'Account': account,
-                                         'To': to,
-                                      'State': ''}
+        self.activeCalls[callid] = {"Account": account, "To": to, "State": ""}
         self.currentCallId = callid
         self.onIncomingCall_cb(callid)
 
-
     def onCallHangUp(self, callid, state):
-        """ Remove callid from call list """
+        """Remove callid from call list"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallHangup_cb(callid)
         self.currentCallId = ""
 
     def onCallConnecting(self, callid, state):
-        """ Update state for this call to Ringing """
+        """Update state for this call to Ringing"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallConnecting_cb(callid)
 
     def onCallRinging(self, callid, state):
-        """ Update state for this call to Ringing """
+        """Update state for this call to Ringing"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallRinging_cb(callid)
 
-
     def onCallHold(self, callid, state):
-        """ Update state for this call to Hold """
+        """Update state for this call to Hold"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallHold_cb()
 
-
     def onCallCurrent(self, callid, state):
-        """ Update state for this call to current """
+        """Update state for this call to current"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallCurrent_cb()
 
     def onCallInactive(self, callid, state):
-        """ Update state for this call to current """
+        """Update state for this call to current"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallInactive_cb()
 
     def onCallBusy(self, callid, state):
-        """ Update state for this call to busy """
+        """Update state for this call to busy"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallBusy_cb()
 
-
     def onCallFailure(self, callid, state):
-        """ Handle call failure """
+        """Handle call failure"""
 
-        self.activeCalls[callid]['State'] = state
+        self.activeCalls[callid]["State"] = state
         self.onCallFailure_cb()
 
     def onCallOver(self, callid):
-        """ Handle call failure """
+        """Handle call failure"""
 
         self.onCallOver_cb()
         del self.activeCalls[callid]
@@ -260,18 +301,24 @@ class libjamiCtrl(Thread):
         pass
 
     def onCallStateChanged(self, callid, state, code):
-        """ On call state changed event, set the values for new calls,
+        """On call state changed event, set the values for new calls,
         or delete the call from the list of active calls
         """
         print(("On call state changed " + callid + " " + state))
 
         if callid not in self.activeCalls:
-            print("This call didn't exist!: " + callid + ". Adding it to the list.")
+            print(
+                "This call didn't exist!: "
+                + callid
+                + ". Adding it to the list."
+            )
             callDetails = self.getCallDetails(callid)
-            self.activeCalls[callid] = {'Account': callDetails['ACCOUNTID'],
-                                             'To': callDetails['PEER_NUMBER'],
-                                          'State': state,
-                                          'Code': code }
+            self.activeCalls[callid] = {
+                "Account": callDetails["ACCOUNTID"],
+                "To": callDetails["PEER_NUMBER"],
+                "State": state,
+                "Code": code,
+            }
 
         self.currentCallId = callid
 
@@ -292,7 +339,7 @@ class libjamiCtrl(Thread):
         elif state == "OVER":
             self.onCallOver(callid)
         elif state == "INACTIVE":
-            self.onCallInactive(callid,state)
+            self.onCallInactive(callid, state)
         else:
             print("unknown state:" + str(state))
         self.onCallStateChanged_cb(callid, state, code)
@@ -312,21 +359,31 @@ class libjamiCtrl(Thread):
         pass
 
     def onConversationReady(self, account, conversationId):
-        print(f'New conversation ready for {account} with id {conversationId}')
+        print(f"New conversation ready for {account} with id {conversationId}")
 
-    def onConversationRequestReceived(self, account, conversationId, metadatas):
-        print(f'New conversation request for {account} with id {conversationId}')
+    def onConversationRequestReceived(
+        self, account, conversationId, metadatas
+    ):
+        print(
+            f"New conversation request for {account} with id {conversationId}"
+        )
 
-    def onConversationPreferencesUpdated(self, account, conversationId, metadatas):
-        print(f'New conversation preferences for {account} with id {conversationId}')
+    def onConversationPreferencesUpdated(
+        self, account, conversationId, metadatas
+    ):
+        print(
+            f"New conversation preferences for {account} with id {conversationId}"
+        )
 
     def onMessageReceived(self, account, conversationId, message):
-        print(f'New message for {account} in conversation {conversationId} with id {message["id"]}')
+        print(
+            f'New message for {account} in conversation {conversationId} with id {message["id"]}'
+        )
         for key in message:
-            print(f'\t {key}: {message[key]}')
+            print(f"\t {key}: {message[key]}")
 
     def onMessageSend(self, message):
-        print(f'New message is logged by daemon: {message}')
+        print(f"New message is logged by daemon: {message}")
 
     #
     # Account management
@@ -339,31 +396,45 @@ class libjamiCtrl(Thread):
         return account
 
     def isAccountExists(self, account):
-        """ Checks if the account exists"""
+        """Checks if the account exists"""
 
         return account in self.getAllAccounts()
 
     def isAccountEnable(self, account=None):
         """Return True if the account is enabled. If no account is provided, active account is used"""
 
-        return self.getAccountDetails(self._valid_account(account))['Account.enable'] == "true"
+        return (
+            self.getAccountDetails(self._valid_account(account))[
+                "Account.enable"
+            ]
+            == "true"
+        )
 
     def isAccountRegistered(self, account=None):
         """Return True if the account is registered. If no account is provided, active account is used"""
 
-        return self.getVolatileAccountDetails(self._valid_account(account))['Account.registrationStatus'] in ('READY', 'REGISTERED')
+        return self.getVolatileAccountDetails(self._valid_account(account))[
+            "Account.registrationStatus"
+        ] in ("READY", "REGISTERED")
 
     def isAccountOfType(self, account_type, account=None):
         """Return True if the account type is the given one. If no account is provided, active account is used"""
 
-        return self.getAccountDetails(self._valid_account(account))['Account.type'] == account_type
+        return (
+            self.getAccountDetails(self._valid_account(account))[
+                "Account.type"
+            ]
+            == account_type
+        )
 
     def getAllAccounts(self, account_type=None):
         """Return a list with all accounts"""
 
-        acclist =  map(str, self.configurationmanager.getAccountList())
+        acclist = map(str, self.configurationmanager.getAccountList())
         if account_type:
-            acclist = filter(partial(self.isAccountOfType, account_type), acclist)
+            acclist = filter(
+                partial(self.isAccountOfType, account_type), acclist
+            )
         return list(acclist)
 
     def getAllEnabledAccounts(self):
@@ -374,7 +445,9 @@ class libjamiCtrl(Thread):
     def getAllRegisteredAccounts(self):
         """Return a list with all registered-only accounts"""
 
-        return [x for x in self.getAllAccounts() if self.isAccountRegistered(x)]
+        return [
+            x for x in self.getAllAccounts() if self.isAccountRegistered(x)
+        ]
 
     def getAccountDetails(self, account=None):
         """Return a list of string. If no account is provided, active account is used"""
@@ -392,12 +465,12 @@ class libjamiCtrl(Thread):
             return self.configurationmanager.getVolatileAccountDetails(account)
         return []
 
-    def setActiveCodecList(self, account=None, codec_list=''):
+    def setActiveCodecList(self, account=None, codec_list=""):
         """Activate given codecs on an account. If no account is provided, active account is used"""
 
         account = self._valid_account(account)
         if self.isAccountExists(account):
-            codec_list = [dbus.UInt32(x) for x in codec_list.split(',')]
+            codec_list = [dbus.UInt32(x) for x in codec_list.split(",")]
             self.configurationmanager.setActiveCodecList(account, codec_list)
 
     def addAccount(self, details=None):
@@ -412,9 +485,11 @@ class libjamiCtrl(Thread):
         """
 
         if details is None:
-            raise libjamiCtrlAccountError("Must specifies type, alias, hostname, \
+            raise libjamiCtrlAccountError(
+                "Must specifies type, alias, hostname, \
                                   username and password in \
-                                  order to create a new account")
+                                  order to create a new account"
+            )
 
         return str(self.configurationmanager.addAccount(details))
 
@@ -431,8 +506,10 @@ class libjamiCtrl(Thread):
 
         for testedaccount in self.getAllAccounts():
             details = self.getAccountDetails(testedaccount)
-            if (details['Account.enable'] == 'true' and
-                details['Account.alias'] == alias):
+            if (
+                details["Account.enable"] == "true"
+                and details["Account.alias"] == alias
+            ):
                 self.account = testedaccount
                 return
         raise libjamiCtrlAccountError("No enabled account matched with alias")
@@ -442,7 +519,7 @@ class libjamiCtrl(Thread):
 
         for account in self.getAllAccounts():
             details = self.getAccountDetails(account)
-            if details['Account.alias'] == alias:
+            if details["Account.alias"] == alias:
                 return account
 
         raise libjamiCtrlAccountError("No account matched with alias")
@@ -486,15 +563,15 @@ class libjamiCtrl(Thread):
         account = self._valid_account(account)
         if enable == True:
             details = self.getAccountDetails(account)
-            details['Account.enable'] = "true"
+            details["Account.enable"] = "true"
             self.configurationmanager.setAccountDetails(account, details)
         else:
             details = self.getAccountDetails(account)
-            details['Account.enable'] = "false"
+            details["Account.enable"] = "false"
             self.configurationmanager.setAccountDetails(account, details)
 
     def setAccountRegistered(self, account=None, register=False):
-        """ Tries to register the account"""
+        """Tries to register the account"""
 
         account = self._valid_account(account)
         self.configurationmanager.sendRegister(account, register)
@@ -507,29 +584,37 @@ class libjamiCtrl(Thread):
     #
 
     def getAllCodecs(self):
-        """ Return all codecs"""
+        """Return all codecs"""
 
         return [int(x) for x in self.configurationmanager.getCodecList()]
 
     def getCodecDetails(self, account, codecId):
-        """ Return codec details"""
-        codecId=dbus.UInt32(codecId)
+        """Return codec details"""
+        codecId = dbus.UInt32(codecId)
         return self.configurationmanager.getCodecDetails(account, codecId)
 
     def getActiveCodecs(self, account=None):
-        """ Return all active codecs on given account"""
+        """Return all active codecs on given account"""
 
         account = self._valid_account(account)
-        return [int(x) for x in self.configurationmanager.getActiveCodecList(account)]
+        return [
+            int(x)
+            for x in self.configurationmanager.getActiveCodecList(account)
+        ]
 
     def setVideoCodecBitrate(self, account, bitrate):
-        """ Change bitrate for all codecs  on given account"""
+        """Change bitrate for all codecs  on given account"""
 
         for codecId in self.configurationmanager.getActiveCodecList(account):
-            details = self.configurationmanager.getCodecDetails(account, codecId)
-            details['CodecInfo.bitrate'] = str(bitrate)
-            if details['CodecInfo.type'] == 'VIDEO':
-                self.configurationmanager.setCodecDetails(account, codecId, details)
+            details = self.configurationmanager.getCodecDetails(
+                account, codecId
+            )
+            details["CodecInfo.bitrate"] = str(bitrate)
+            if details["CodecInfo.type"] == "VIDEO":
+                self.configurationmanager.setCodecDetails(
+                    account, codecId, details
+                )
+
     #
     # Call management
     #
@@ -577,16 +662,21 @@ class libjamiCtrl(Thread):
             self.setFirstRegisteredAccount()
 
         if self.account != "IP2IP" and not self.isAccountRegistered():
-            raise libjamiCtrlAccountError("Can't place a call without a registered account")
+            raise libjamiCtrlAccountError(
+                "Can't place a call without a registered account"
+            )
 
         # Send the request to the CallManager
         callid = self.callmanager.placeCall(self.account, dest)
         if callid:
             # Add the call to the list of active calls and set status to SENT
-            self.activeCalls[callid] = {'Account': self.account, 'To': dest, 'State': 'SENT' }
+            self.activeCalls[callid] = {
+                "Account": self.account,
+                "To": dest,
+                "State": "SENT",
+            }
 
         return callid
-
 
     def HangUp(self, callid):
         """End a call identified by a CallID"""
@@ -595,10 +685,9 @@ class libjamiCtrl(Thread):
             self.setFirstRegisteredAccount()
 
         if callid is None or callid == "":
-            pass # just to see
+            pass  # just to see
 
         self.callmanager.hangUp(callid)
-
 
     def Transfer(self, callid, to):
         """Transfert a call identified by a CallID"""
@@ -618,7 +707,6 @@ class libjamiCtrl(Thread):
 
         self.callmanager.refuse(callid)
 
-
     def Accept(self, callid):
         """Accept an incoming call identified by a CallID"""
 
@@ -627,13 +715,14 @@ class libjamiCtrl(Thread):
             self.setFirstRegisteredAccount()
 
         if not self.isAccountRegistered():
-            raise libjamiCtrlAccountError("Can't accept a call without a registered account")
+            raise libjamiCtrlAccountError(
+                "Can't accept a call without a registered account"
+            )
 
         if callid is None or callid == "":
             raise libjamiCtrlError("Invalid callID")
 
         self.callmanager.accept(callid)
-
 
     def Hold(self, callid):
         """Hold a call identified by a CallID"""
@@ -642,7 +731,6 @@ class libjamiCtrl(Thread):
             raise libjamiCtrlError("Invalid callID")
 
         self.callmanager.hold(callid)
-
 
     def UnHold(self, callid):
         """Unhold an incoming call identified by a CallID"""
@@ -653,47 +741,39 @@ class libjamiCtrl(Thread):
         self.callmanager.unhold(callid)
 
     def SetAudioOutputDevice(self, index):
-        self.configurationmanager.setAudioOutputDevice(int (index ))
-
+        self.configurationmanager.setAudioOutputDevice(int(index))
 
     def SetAudioInputDevice(self, index):
-        self.configurationmanager.setAudioInputDevice(int (index ))
-
+        self.configurationmanager.setAudioInputDevice(int(index))
 
     def ListAudioDevices(self):
         outs = self.configurationmanager.getAudioOutputDeviceList()
         ins = self.configurationmanager.getAudioInputDeviceList()
-        return {
-            "outputDevices": list(outs),
-            "inputDevices": list(ins)
-        }
-
+        return {"outputDevices": list(outs), "inputDevices": list(ins)}
 
     def Dtmf(self, key):
         """Send a DTMF"""
 
         self.callmanager.playDTMF(key)
 
-
     def _GenerateCallID(self):
         """Generate Call ID"""
 
         m = hashlib.md5()
-        t = int( time.time() * 1000 )
-        r = int( random.random()*100000000000000000 )
+        t = int(time.time() * 1000)
+        r = int(random.random() * 100000000000000000)
         m.update(str(t) + str(r))
         callid = m.hexdigest()
         return callid
 
-
     def createConference(self, call1Id, call2Id):
-        """ Create a conference given the two call ids """
+        """Create a conference given the two call ids"""
 
         self.callmanager.joinParticipant(call1Id, call2Id)
         return self.callmanager.getConferenceId(call1Id)
 
     def hangupConference(self, confId):
-        """ Hang up each call for this conference """
+        """Hang up each call for this conference"""
 
         self.callmanager.hangUpConference(confId)
 
@@ -703,7 +783,7 @@ class libjamiCtrl(Thread):
         return self.callmanager.switchInput(callid, inputName)
 
     def interruptHandler(self, signum, frame):
-        print('Signal handler called with signal ' + str(signum))
+        print("Signal handler called with signal " + str(signum))
         self.stopThread()
 
     def printAccountDetails(self, account):
@@ -713,11 +793,17 @@ class libjamiCtrl(Thread):
             print("  %s: %s" % (k, details[k]))
         print()
 
-    def sendFile(self, *args, **kwds):
-        return self.configurationmanager.sendFile(*args, **kwds)
+    def sendFile(
+        self, account, conversationId, filePath, fileDisplayName="", replyTo=""
+    ):
+        return self.configurationmanager.sendFile(
+            account, conversationId, filePath, fileDisplayName, replyTo
+        )
 
     def sendTextMessage(self, account, to, message):
-        return self.configurationmanager.sendTextMessage(account, to, { 'text/plain': message })
+        return self.configurationmanager.sendTextMessage(
+            account, to, {"text/plain": message}
+        )
 
     def startConversation(self, account):
         return self.configurationmanager.startConversation(account)
@@ -729,22 +815,38 @@ class libjamiCtrl(Thread):
         return self.configurationmanager.getConversationRequests(account)
 
     def listConversationsMembers(self, account, conversationId):
-        return self.configurationmanager.getConversationMembers(account, conversationId)
+        return self.configurationmanager.getConversationMembers(
+            account, conversationId
+        )
 
     def addConversationMember(self, account, conversationId, member):
-        return self.configurationmanager.addConversationMember(account, conversationId, member)
+        return self.configurationmanager.addConversationMember(
+            account, conversationId, member
+        )
 
     def acceptConversationRequest(self, account, conversationId):
-        return self.configurationmanager.acceptConversationRequest(account, conversationId)
+        return self.configurationmanager.acceptConversationRequest(
+            account, conversationId
+        )
 
     def declineConversationRequest(self, account, conversationId):
-        return self.configurationmanager.declineConversationRequest(account, conversationId)
+        return self.configurationmanager.declineConversationRequest(
+            account, conversationId
+        )
 
-    def sendMessage(self, account, conversationId, message, parent=''):
-        return self.configurationmanager.sendMessage(account, conversationId, message, parent, 0)
-    
+    # Flag: 0 = reply (if commitId is not empty), else single message
+    #       1 = edit message
+    def sendMessage(
+        self, account, conversationId, message, commitId="", flag=0
+    ):
+        return self.configurationmanager.sendMessage(
+            account, conversationId, message, commitId, flag
+        )
+
     def removeConversation(self, account, conversationId):
-        return self.configurationmanager.removeConversation(account, conversationId)
+        return self.configurationmanager.removeConversation(
+            account, conversationId
+        )
 
     def run(self):
         """Processing method for this thread"""

@@ -6,6 +6,9 @@ For help and documentation, please read the README.md file.
 Online available at:
 https://github.com/8go/jami-commander/blob/master/README.md
 
+DBUS API can be found here:
+https://git.jami.net/savoirfairelinux/jami-daemon/-/blob/master/bin/dbus/cx.ring.Ring.ConfigurationManager.xml?ref_type=heads
+
 """
 
 # 234567890123456789012345678901234567890123456789012345678901234567890123456789
@@ -35,6 +38,7 @@ import textwrap
 import errno
 import subprocess
 import time
+import select
 
 from controller import libjamiCtrl
 import signal
@@ -84,7 +88,7 @@ VERSION_USED_DEFAULT = PRINT  # use 'print' by default with --version
 # increment this number and use new incremented number for next warning
 # last unique Wxxx warning number used: W113:
 # increment this number and use new incremented number for next error
-# last unique Exxx error number used: E254:
+# last unique Exxx error number used: E255:
 
 
 class LooseVersion:
@@ -182,10 +186,6 @@ def zn(str):
     return str or ""
 
 
-
-
-
-
 def print_output(
     option: Literal["text", "json"],
     *,
@@ -270,12 +270,6 @@ def obj_to_dict(obj):
         return {obj.__class__.__name__: str(obj)}
 
 
-
-
-
-
-
-
 def create_pid_file() -> None:
     """Write PID to disk.
 
@@ -326,17 +320,6 @@ def cleanup() -> None:
     delete_pid_file()
 
 
-
-
-
-
-
-
-
-
-
-
-
 async def action_get_enabled_accounts() -> None:
     """Get enabled account ids."""
     # # TODO:
@@ -355,8 +338,448 @@ async def action_get_enabled_accounts() -> None:
     )
 
 
+async def action_get_conversations() -> None:
+    """Get swarm conversation ids associated with the account."""
+    # # TODO:
+    convs = gs.ctrl.listConversations(gs.account)
+    json_ = {"accountid": gs.account, "conversationids": convs}
+    text = ""
+    for conv in convs:
+        text += f"{conv}\n"
+    text = text.strip()
+    # output format controlled via --output flag
+    # json_.pop("transport_response")
+    print_output(
+        gs.pa.output,
+        text=text,
+        json_=json_,
+    )
 
 
+# according to linter: function is too complex, C901
+async def send_file(conversations, file):  # noqa: C901
+    """Process file.
+
+    Send file to conversation.
+
+    Arguments:
+    ---------
+    conversations : list
+        list of conversationid-s
+    file : str
+        file name of file from --file argument
+
+    """
+    if not conversations:
+        gs.log.info(
+            "No conversations are given. This should not happen. "
+            "This file is being dropped and NOT sent."
+        )
+        return
+
+    if file == "-":  # - means read as pipe from stdin
+        isPipe = True
+        fin_buf = sys.stdin.buffer.read()
+        len_fin_buf = len(fin_buf)
+        file = "mc-" + str(uuid.uuid4()) + ".tmp"
+        gs.log.debug(
+            f"{len_fin_buf} bytes of file data read from stdin. "
+            f'Temporary file "{file}" was created for file.'
+        )
+        fout = open(file, "wb")
+        fout.write(fin_buf)
+        fout.close()
+    else:
+        isPipe = False
+
+    if not os.path.isfile(file):
+        gs.log.debug(
+            f"File {file} is not a file. Doesn't exist or "
+            "is a directory. "
+            "This file is being dropped and NOT sent."
+        )
+        return
+
+    try:
+        for conversation in conversations:
+            resp = gs.ctrl.sendFile(
+                gs.account,
+                conversation,
+                os.path.abspath(file),
+                fileDisplayName=os.path.basename(file),
+                replyTo="",
+            )
+            # this never returns anything, resp == None
+            gs.log.debug(f"ctrl.sendFile() returned {resp}.")
+            gs.log.info(
+                f'An attempt was made to send file "{file}" '
+                f'to conversation "{conversation}". Response was {resp}.'
+            )
+    except Exception:
+        gs.log.error("E147: " f"File send of file {file} failed. Sorry.")
+        gs.err_count += 1
+        gs.log.debug("Here is the traceback.\n" + traceback.format_exc())
+
+    if isPipe:
+        # rm temp file
+        os.remove(file)
+
+
+# according to linter: function is too complex, C901
+async def send_message(conversations, message):  # noqa: C901
+    """Process message.
+
+    Format message according to instructions from command line arguments.
+    Then send the one message to all rooms.
+
+    Arguments:
+    ---------
+    conversations : list
+        list of conversationsid-s
+    message : str
+        message to send as read from -m, pipe or keyboard
+        message is without mime formatting
+
+    """
+    if not conversations:
+        gs.log.info(
+            "No conversations are given. This should not happen. "
+            "This text message is being dropped and NOT sent."
+        )
+        return
+    # remove leading AND trailing newlines to beautify
+    message = message.strip("\n")
+
+    if message.strip() == "":
+        gs.log.debug(
+            "The message is empty. "
+            "This message is being dropped and NOT sent."
+        )
+        return
+
+    if gs.pa.code:
+        gs.log.debug('Sending message in format "code".')
+        formatted_message = "<pre><code>" + message + "\n</code></pre>\n"
+        # next line: work-around for Element Android
+        message = "```\n" + message + "\n```"  # to format it as code
+        formatted_message = message
+    elif gs.pa.markdown:
+        gs.log.debug(
+            "Converting message from MarkDown into HTML. "
+            'Sending message in format "markdown".'
+        )
+        # e.g. converts from "-abc" to "<ul><li>abc</li></ul>"
+        formatted_message = markdown(message)
+    elif gs.pa.html:
+        gs.log.debug('Sending message in format "html".')
+        formatted_message = message  # the same for the time being
+    elif gs.pa.emojize:
+        gs.log.debug('Sending message in format "emojized".')
+        # convert emoji shortcodes if present
+        formatted_message = emoji.emojize(message)
+    else:
+        gs.log.debug('Sending message in format "text".')
+        formatted_message = message
+
+    try:
+        for conversation in conversations:
+            resp = gs.ctrl.sendMessage(
+                gs.account,
+                conversation,
+                formatted_message,
+                commitId="",
+                flag=0,
+            )
+            # this never returns anything, resp == None
+            gs.log.debug(f"ctrl.sendMessage() returned {resp}.")
+            gs.log.info(
+                f'An attempt was made to send message "{message}" '
+                f'to conversation "{conversation}". Response was {resp}.'
+            )
+    except Exception:
+        gs.log.error("E151: " "Message send failed. Sorry.")
+        gs.err_count += 1
+        gs.log.debug("Here is the traceback.\n" + traceback.format_exc())
+
+
+async def stream_messages_from_pipe(client, rooms):
+    """Read input from pipe if available.
+
+    Read pipe line by line. For each line received, immediately
+    send it.
+
+    Arguments:
+    ---------
+    client : Client
+    rooms : list of room_ids
+
+    """
+    stdin_ready = select.select(
+        [
+            sys.stdin,
+        ],
+        [],
+        [],
+        0.0,
+    )[  # noqa
+        0
+    ]  # noqa
+    if not stdin_ready:
+        gs.log.debug(
+            "stdin is not ready for streaming. "
+            "A pipe could be used, but pipe could be empty, "
+            "stdin could also be a keyboard."
+        )
+    else:
+        gs.log.debug(
+            "stdin is ready. Something "
+            "is definitely piped into program from stdin. "
+            "Reading message from stdin pipe."
+        )
+    if ((not stdin_ready) and (not sys.stdin.isatty())) or stdin_ready:
+        if not sys.stdin.isatty():
+            gs.log.debug(
+                "Pipe was definitely used, but pipe might be empty. "
+                "Trying to read from pipe in any case."
+            )
+        try:
+            for line in sys.stdin:
+                await send_message(client, rooms, line)
+                gs.log.debug("Using data from stdin pipe stream as message.")
+        except EOFError:  # EOF when reading a line
+            gs.log.debug(
+                "Reading from stdin resulted in EOF. This can happen "
+                "when a pipe was used, but the pipe is empty. "
+                "No message will be generated."
+            )
+        except UnicodeDecodeError:
+            gs.log.info(
+                "Reading from stdin resulted in UnicodeDecodeError. This "
+                "can happen if you try to pipe binary data for a text "
+                "message. For a text message only pipe text via stdin, "
+                "not binary data. No message will be generated."
+            )
+
+
+def get_messages_from_pipe() -> list:
+    """Read input from pipe if available.
+
+    Return [] if no input available on pipe stdin.
+    Return ["some-msg"] if input is availble.
+    Might also return [""] of course if "" was in pipe.
+    Currently there is at most 1 msg in the returned list.
+    """
+    messages = []
+    stdin_ready = select.select(
+        [
+            sys.stdin,
+        ],
+        [],
+        [],
+        0.0,
+    )[  # noqa
+        0
+    ]  # noqa
+    if not stdin_ready:
+        gs.log.debug(
+            "stdin is not ready for reading. "
+            "A pipe could be used, but pipe could be empty, "
+            "stdin could also be a keyboard."
+        )
+    else:
+        gs.log.debug(
+            "stdin is ready. Something "
+            "is definitely piped into program from stdin. "
+            "Reading message from stdin pipe."
+        )
+    if ((not stdin_ready) and (not sys.stdin.isatty())) or stdin_ready:
+        if not sys.stdin.isatty():
+            gs.log.debug(
+                "Pipe was definitely used, but pipe might be empty. "
+                "Trying to read from pipe in any case."
+            )
+        message = ""
+        try:
+            for line in sys.stdin:
+                message += line
+            gs.log.debug("Using data from stdin pipe as message.")
+            messages.append(message)
+        except EOFError:  # EOF when reading a line
+            gs.log.debug(
+                "Reading from stdin resulted in EOF. This can happen "
+                "when a pipe was used, but the pipe is empty. "
+                "No message will be generated."
+            )
+        except UnicodeDecodeError:
+            gs.log.info(
+                "Reading from stdin resulted in UnicodeDecodeError. This "
+                "can happen if you try to pipe binary data for a text "
+                "message. For a text message only pipe text via stdin, "
+                "not binary data. No message will be generated."
+            )
+    return messages
+
+
+def get_messages_from_keyboard() -> list:
+    """Read input from keyboard but only if no other messages are available.
+
+    If there is a message provided via --message argument, no message
+    will be read from keyboard.
+    If there are other send operations like --image, --file, etc. are
+    used, no message will be read from keyboard.
+    If there is a message provided via stdin input pipe, no message
+    will be read from keyboard.
+    In short, we only read from keyboard as last resort, if no messages are
+    specified or provided anywhere and no other send-operations like
+    --image, --event, etc. are performed.
+
+    Return [] if no input available on keyboard.
+    Return ["some-msg"] if input is availble on keyboard.
+    Might also return [""] of course if "" keyboard entry was empty.
+    Currently there is at most 1 msg in the returned list.
+    """
+    messages = []
+    if gs.pa.message:
+        gs.log.debug(
+            "Don't read from keyboard because there are "
+            "messages provided in arguments with -m."
+        )
+        return messages  # return empty list because mesgs in -m
+    if gs.pa.file or gs.pa.version:
+        gs.log.debug(
+            "Don't read from keyboard because there are "
+            "other send operations or --version provided in arguments."
+        )
+        return messages  # return empty list because mesgs in -m
+    stdin_ready = select.select(
+        [
+            sys.stdin,
+        ],
+        [],
+        [],
+        0.0,
+    )[  # noqa
+        0
+    ]  # noqa
+    if not stdin_ready:
+        gs.log.debug(
+            "stdin is not ready for keyboard interaction. "
+            "A pipe could be used, but pipe could be empty, "
+            "stdin could also be a keyboard."
+        )
+    else:
+        gs.log.debug(
+            "stdin is ready. Something "
+            "is definitely piped into program from stdin. "
+            "Reading message from stdin pipe."
+        )
+    if (not stdin_ready) and (sys.stdin.isatty()):
+        # because sys.stdin.isatty() is true
+        gs.log.debug(
+            "No pipe was used, so read input from keyboard. "
+            "Reading message from keyboard"
+        )
+        try:
+            message = input("Enter message to send: ")
+            gs.log.debug("Using data from stdin keyboard as message.")
+            messages.append(message)
+        except EOFError:  # EOF when reading a line
+            gs.log.debug(
+                "Reading from stdin resulted in EOF. "
+                "Reading from keyboard failed. "
+                "No message will be generated."
+            )
+    return messages
+
+
+async def send_messages_and_files(conversations, messages):
+    """Send text messages and files.
+
+    First images, audio, etc, then text messaged.
+
+    Arguments:
+    ---------
+    client : Client
+    rooms : list of room_ids
+    messages : list of messages to send
+
+    """
+    if gs.pa.file:
+        for file in gs.pa.file:
+            await send_file(conversations, file)
+
+    for message in messages:
+        await send_message(conversations, message)
+
+
+async def process_arguments_and_input(conversations):
+    """Process arguments and all input.
+
+    Process all input: text messages, etc.
+    Prepare a list of messages from all sources and then send them.
+    Before send all files.
+
+    Arguments:
+    ---------
+    conversations : list of conversationids (destinations)
+
+    """
+    streaming = False
+    messages_from_pipe = []
+    if gs.stdin_use == "none":  # STDIN is unused
+        messages_from_pipe = get_messages_from_pipe()
+    messages_from_keyboard = get_messages_from_keyboard()
+    if not gs.pa.message:
+        messages_from_commandline = []
+    else:
+        messages_from_commandline = []
+        for m in gs.pa.message:
+            if m == "\\-":  # escaped -
+                messages_from_commandline += ["-"]
+            elif m == "\\_":  # escaped _
+                messages_from_commandline += ["_"]
+            elif m == "-":
+                # stdin pipe, read and process everything in pipe as 1 msg
+                messages_from_commandline += get_messages_from_pipe()
+            elif m == "_":
+                # streaming via pipe on stdin
+                # stdin pipe, read and process everything in pipe line by line
+                streaming = True
+            else:
+                messages_from_commandline += [m]
+
+    gs.log.debug(f"Messages from pipe:         {messages_from_pipe}")
+    gs.log.debug(f"Messages from keyboard:     {messages_from_keyboard}")
+    gs.log.debug(f"Messages from command-line: {messages_from_commandline}")
+
+    messages_all = (
+        messages_from_commandline + messages_from_pipe + messages_from_keyboard
+    )  # keyboard at end
+
+    # loop thru all msgs and split them
+    if gs.pa.split:
+        # gs.pa.split can have escape characters, it has to be de-escaped
+        decoded_string = bytes(gs.pa.split, "utf-8").decode("unicode_escape")
+        gs.log.debug(f'String used for splitting is: "{decoded_string}"')
+        messages_all_split = []
+        for m in messages_all:
+            messages_all_split += m.split(decoded_string)
+    else:  # not gs.pa.split
+        messages_all_split = messages_all
+
+    if (gs.pa.file or messages_all_split) and not conversations:
+        gs.log.error(
+            "E255: "
+            "No conversations are given. Specify --conversations. "
+            "Nothing is being sent. Try again with --conversations set."
+        )
+        gs.err_count += 1
+        return
+
+    await send_messages_and_files(conversations, messages_all_split)
+    # now we are done with all the usual sends, now we start streaming
+    if streaming:
+        await stream_messages_from_pipe(conversations)
 
 
 async def action_conversationsetget() -> None:
@@ -379,10 +802,10 @@ async def action_conversationsetget() -> None:
         #     await action_set_display_name(gs.client, gs.credentials)
 
         # get_action
-        # if gs.pa.get_display_name:
-        #     await action_get_display_name(gs.client, gs.credentials)
         if gs.pa.get_enabled_accounts:
             await action_get_enabled_accounts()
+        if gs.pa.get_conversations:
+            await action_get_conversations()
         if gs.setget_action:
             gs.log.debug("Set or get action(s) were performed or attempted.")
     except Exception as e:
@@ -395,20 +818,17 @@ async def action_conversationsetget() -> None:
         gs.err_count += 1
 
 
-
-
 async def action_send() -> None:
     """Send messages while already logged in."""
     if not gs.account:
-        gs.log.error(
-            "E218: " "Account not set. Skipping action."
-        )
+        gs.log.error("E218: " "Account not set. Skipping action.")
         gs.err_count += 1
         return
     try:
         gs.log.debug(f"account is: {gs.account}")
-        # Now we can send messages as the user
-        # TODO await process_arguments_and_input(gs.client, rooms)
+        # Now we can send messages and files
+        # TODO
+        await process_arguments_and_input(gs.pa.conversations)
         gs.log.debug("Message send action finished.")
     except Exception as e:
         gs.log.error(
@@ -437,8 +857,8 @@ def create_jami_controller() -> None:
         gs.err_count += 1
         try:
             gs.log.debug(f"Trying to automatically start jamid process.")
-            subprocess.Popen(["/usr/libexec/jamid","-p"])
-            time.sleep(3) # Sleep for 3 seconds
+            subprocess.Popen(["/usr/libexec/jamid", "-p"])
+            time.sleep(3)  # Sleep for 3 seconds
         except Exception as e:
             gs.log.error(
                 "E234: "
@@ -448,12 +868,13 @@ def create_jami_controller() -> None:
             )
             gs.err_count += 1
             raise e
-        try: # retry it for a second and last time
+        try:  # retry it for a second and last time
             ctrl = libjamiCtrl(name=sys.argv[0], autoAnswer=False)
         except Exception as e:
             raise e
     gs.ctrl = ctrl
     gs.log.debug(f"Jami controller object ctrl set. {gs.ctrl.__dict__}")
+
 
 async def action_account() -> None:
     """Set the accountid.
@@ -468,21 +889,22 @@ async def action_account() -> None:
         gs.log.debug(f"Account details: {details}")
 
     if gs.pa.account is None:
-        gs.log.debug("No account specified in command line. --account not used.")
+        gs.log.debug(
+            "No account specified in command line. --account not used."
+        )
         # get all accounts
         # if there is exactly 1, then use it
         # otherwise raise error
         if len(accts) == 0:
-            txt = (
-                "E234: "
-                "No account found. Create an account first. "
-            )
+            txt = "E234: " "No account found. Create an account first. "
             gs.err_count += 1
             raise JamiCommanderError(txt)
         elif len(accts) == 1:
             gs.pa.account = accts[0]
             gs.account = accts[0]
-            gs.log.debug(f"Exactly one valid account found: {gs.account}. It will be used.")
+            gs.log.debug(
+                f"Exactly one valid account found: {gs.account}. It will be used."
+            )
         else:
             txt = (
                 "E234: "
@@ -492,7 +914,9 @@ async def action_account() -> None:
             gs.err_count += 1
             raise JamiCommanderError(txt)
     else:
-        gs.log.debug(f"Account {gs.pa.account} was specified in command line. --account was used.")
+        gs.log.debug(
+            f"Account {gs.pa.account} was specified in command line. --account was used."
+        )
         # check if account is valid
         # otherwise raise error
         if gs.pa.account not in accts:
@@ -506,9 +930,6 @@ async def action_account() -> None:
             raise JamiCommanderError(txt)
     gs.account = gs.pa.account
     gs.log.debug(f"Account {gs.account} is valid and will be used.")
-
-
-
 
 
 async def async_main() -> None:
@@ -544,8 +965,6 @@ async def async_main() -> None:
             await gs.client.close()
 
 
-
-
 def check_arg_files_readable() -> None:
     """Check if files from command line are readable."""
     arg_files = gs.pa.file if gs.pa.file else []
@@ -564,7 +983,6 @@ def check_arg_files_readable() -> None:
             errfile = fn
     if not r:
         raise FileNotFoundError(errno.ENOENT, errtxt, errfile)
-
 
 
 def check_download_media_dir() -> None:
@@ -628,8 +1046,7 @@ def check_version() -> None:
         response = urllib.request.urlopen(pypi_url).read().decode()
     except Exception as e:
         gs.log.warning(
-            "Could not obtain version info from "
-            f"{pypi_url} for you. ({e})"
+            "Could not obtain version info from " f"{pypi_url} for you. ({e})"
         )
         latest_version = "unknown"
         utd = "Try again later."
@@ -739,27 +1156,23 @@ def initial_check_of_args() -> None:  # noqa: C901
     if gs.pa.output is not None:
         gs.pa.output = gs.pa.output.lower()
 
-    if (
-        gs.pa.message
-        or gs.pa.file
-    ):
+    # send
+    if gs.pa.message or gs.pa.file:
         gs.send_action = True
     else:
         gs.send_action = False
 
-
-    if (
-        gs.pa.get_enabled_accounts  # get
-    ):
+    # get
+    if gs.pa.get_enabled_accounts or gs.pa.get_conversations:
         gs.get_action = True
     else:
         gs.get_action = False
 
+    # set
     if gs.set_action or gs.get_action:
         gs.setget_action = True
     else:
         gs.setget_action = False
-
 
     # how often is "-" used to represent stdin
     # must be 0 or 1; cannot be used twice or more
@@ -776,9 +1189,7 @@ def initial_check_of_args() -> None:  # noqa: C901
             if message == "-" or message == "_":
                 STDIN_MESSAGE += 1
                 gs.stdin_use = "message"
-    STDIN_TOTAL = (
-        STDIN_MESSAGE + STDIN_FILE
-    )
+    STDIN_TOTAL = STDIN_MESSAGE + STDIN_FILE
 
     # Secondly, the checks
     if gs.pa.version and (
@@ -994,6 +1405,26 @@ def main_inner(
         "If --account is not used then {PROG_WITHOUT_EXT} will "
         "try to automatically detect and use an enabled account.",
     )
+
+    ap.add_argument(
+        "-c",
+        "--conversations",
+        required=False,
+        action="extend",
+        nargs="+",
+        type=str,
+        metavar="CONVERSATIONID",
+        help="Specify one or multiple swarm conversations. "
+        "Details:: Optionally specify one or multiple swarm conversations "
+        "via swarm ids (conversation ids). "
+        "Swarm ids are long random looking hexadecial strings. "
+        "--conversations is used by various send actions and "
+        "various listen actions. "
+        "The chosen account must have access to the specified conversations "
+        "in order to send messages there or listen on the conversations. "
+        "Messages cannot be sent to arbitrary conversations.",
+    )
+
     ap.add_argument(
         "--get-enabled-accounts",
         required=False,
@@ -1002,6 +1433,14 @@ def main_inner(
         "Details:: Prints all enabled account ids.",
     )
 
+    ap.add_argument(
+        "--get-conversations",
+        required=False,
+        action="store_true",
+        help="List all swarm conversations by ids for the active account. "
+        "Details:: Prints the swarm ids all swarm conversations associated "
+        "with the specified or automatically chosen account.",
+    )
 
     # allow multiple messages , e.g. -m "m1" "m2" or -m "m1" -m "m2"
     # message is going to be a list of strings
@@ -1074,6 +1513,71 @@ def main_inner(
         "character '-'. See description of '-m' to see how '-' is handled.",
     )
 
+    # -h already used for --help, -w for "web"
+    ap.add_argument(
+        "-w",
+        "--html",
+        required=False,
+        action="store_true",
+        help='Send message as format "HTML". '
+        "Details:: If not specified, message will be sent "
+        'as format "TEXT". E.g. that allows some text '
+        "to be bold, etc. Only a subset of HTML tags are "
+        "accepted by Matrix.",
+    )
+    # -m already used for --message, -z because there were no letters left
+    ap.add_argument(
+        "-z",
+        "--markdown",
+        required=False,
+        action="store_true",
+        help='Send message as format "MARKDOWN". '
+        "Details:: If not specified, message will be sent "
+        'as format "TEXT". E.g. that allows sending of text '
+        "formatted in MarkDown language.",
+    )
+    #  -c is already used for --credentials, -k as it sounds like c
+    ap.add_argument(
+        "-k",
+        "--code",
+        required=False,
+        action="store_true",
+        help='Send message as format "CODE". '
+        "Details:: If not specified, message will be sent "
+        'as format "TEXT". If both --html and --code are '
+        "specified then --code takes priority. This is "
+        "useful for sending ASCII-art or tabbed output "
+        "like tables as a fixed-sized font will be used "
+        "for display.",
+    )
+    #  -j for emoJize
+    ap.add_argument(
+        "-j",
+        "--emojize",
+        required=False,
+        action="store_true",
+        help="Send message after emojizing. "
+        "Details:: If not specified, message will be sent "
+        'as format "TEXT". If both --code and --emojize are '
+        "specified then --code takes priority. This is "
+        "useful for sending emojis in shortcode form :collision:.",
+    )
+
+    ap.add_argument(
+        "--split",
+        required=False,
+        type=str,
+        metavar="SEPARATOR",
+        help="Split message text into multiple Jami messages. "
+        "Details:: If set, split the message(s) into multiple messages "
+        "wherever the string specified with --split occurs. "
+        "E.g. One pipes a stream of RSS articles into the "
+        "program and the articles are separated by three "
+        "newlines. "
+        'Then with --split set to "\\n\\n\\n" each article '
+        "will be printed in a separate message. "
+        "By default, i.e. if not set, no messages will be split.",
+    )
 
     ap.add_argument(
         "--separator",
@@ -1091,7 +1595,6 @@ def main_inner(
         "with spaces by the terminal. So, that might not give you what you "
         "want. Maybe ' || ' is an alternative choice.",
     )
-
 
     ap.add_argument(
         "-o",
@@ -1201,12 +1704,20 @@ Set the log level(s).
 Set the verbosity level.
 <-a>, <--account> ACCOUNTID
 Connect to and use the specified account.
+<-c>, <--conversations> CONVERSATIONID [CONVERSATIONID ...]
+Specify one or multiple swarm conversations.
 <--get-enabled-accounts>
 List all enabled accounts by ids.
+<--get-conversations>
+List all swarm conversations by ids for the active account.
 <-f>, <--file> FILE [FILE ...]
 Send one or multiple files (e.g. PDF, DOC, MP4).
 <-m>, <--message> TEXT [TEXT ...]
 Send one or multiple text messages.
+<--code>
+Send message as format "CODE".
+<--split> SEPARATOR
+Split message text into multiple Jami messages.
 <--separator> SEPARATOR
 Set the separator.
 <-o>, <--output> TEXT|JSON
@@ -1402,11 +1913,6 @@ Print version information or check for updates.
         raise
     finally:
         cleanup()
-
-
-
-
-
 
 
 def main(argv: Union[None, list] = None) -> int:
