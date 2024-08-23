@@ -1,0 +1,51 @@
+Welcome to jami-commander, a Jami CLI client.
+
+jami-commander supports these arguments:
+
+--usage
+  Print usage.
+-h, --help
+  Print help.
+--manual
+  Print manual.
+--readme
+  Print README.md file.
+-d, --debug
+  Print debug information.
+--log-level DEBUG|INFO|WARNING|ERROR|CRITICAL [DEBUG|INFO|WARNING|ERROR|CRITICAL
+...]
+  Set the log level(s).
+--verbose
+  Set the verbosity level.
+-a ACCOUNTID, --account ACCOUNTID
+  Connect to and use the specified account.
+-c CONVERSATIONID [CONVERSATIONID ...], --conversations CONVERSATIONID
+[CONVERSATIONID ...]
+  Specify one or multiple swarm conversations.
+--get-enabled-accounts
+  List all enabled accounts by ids.
+--get-conversations
+  List all swarm conversations by ids for the active account.
+-m TEXT [TEXT ...], --message TEXT [TEXT ...]
+  Send one or multiple text messages.
+-f FILE [FILE ...], --file FILE [FILE ...]
+  Send one or multiple files (e.g. PDF, DOC, MP4).
+-w, --html
+  Send message as format "HTML".
+-z, --markdown
+  Send message as format "MARKDOWN".
+-k, --code
+  Send message as format "CODE".
+-j, --emojize
+  Send message after emojizing.
+--split SEPARATOR
+  Split message text into multiple Jami messages.
+--separator SEPARATOR
+  Set a custom separator used for certain print outs.
+-o TEXT|JSON, --output TEXT|JSON
+  Select an output format.
+-v [PRINT|CHECK], -V [PRINT|CHECK], --version [PRINT|CHECK]
+  Print version information or check for updates.
+
+You are running version 0.2.0 2024-08-23. Enjoy, star on Github and contribute
+by submitting a Pull Request.

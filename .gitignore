@@ -175,8 +175,7 @@ README.md.*
 jami-commander.py.*
 jami_commander.20*
 /jami_commander/jami-commander.py.*
-/jami_commander/jami_commander.py.*
-/matrix_commander/jami-commander.py*
+/jami_commander/matrix-commander*
 setup.cfg.*
 
 # ignore help file

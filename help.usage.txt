@@ -1,0 +1,13 @@
+Welcome to jami-commander, a Jami CLI client.
+
+usage: jami-commander [--usage] [-h] [--manual] [--readme] [-d]
+                      [--log-level DEBUG|INFO|WARNING|ERROR|CRITICAL [DEBUG|INFO|WARNING|ERROR|CRITICAL ...]]
+                      [--verbose] [-a ACCOUNTID]
+                      [-c CONVERSATIONID [CONVERSATIONID ...]]
+                      [--get-enabled-accounts] [--get-conversations]
+                      [-m TEXT [TEXT ...]] [-f FILE [FILE ...]] [-w] [-z] [-k]
+                      [-j] [--split SEPARATOR] [--separator SEPARATOR]
+                      [-o TEXT|JSON] [-v [PRINT|CHECK]]
+
+You are running version 0.2.0 2024-08-23. Enjoy, star on Github and contribute
+by submitting a Pull Request.

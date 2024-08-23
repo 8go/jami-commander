@@ -19,36 +19,34 @@ https://git.jami.net/savoirfairelinux/jami-daemon/-/blob/master/bin/dbus/cx.ring
 
 
 import argparse
-import os
-import re  # regular expression
-from typing import Literal, Optional, Union
-import sys
+import asyncio
+import errno
 import json
 import logging
-import uuid
-import asyncio
-import pkg_resources
+import os
+import os.path
+import re  # regular expression
+import select
+import subprocess
+import sys
+import tempfile
+import textwrap
+import time
+import traceback
 import urllib.request
+import uuid
 from os import R_OK, access
 from os.path import isfile
-from typing import Literal, Optional, Union
-from urllib.parse import quote, urlparse
-import traceback
-import textwrap
-import errno
-import subprocess
-import time
-import select
+from typing import Literal, Union
 
+import emoji
+import markdown
+import pkg_resources
 from controller import libjamiCtrl
-import signal
-import os.path
-import threading
-
 
 # version number
-VERSION = "2024-08-22"
-VERSIONNR = "0.1.0"
+VERSION = "2024-08-23"
+VERSIONNR = "0.2.0"
 # jami-commander; for backwards compitability replace _ with -
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0].replace(
     "_", "-"
@@ -77,6 +75,11 @@ OUTPUT_TEXT = "text"
 OUTPUT_JSON = "json"
 OUTPUT_DEFAULT = OUTPUT_TEXT
 
+# location of README.md file if it is not found on local harddisk
+# used for --manual
+README_FILE_RAW_URL = (
+    "https://raw.githubusercontent.com/8go/jami-commander/master/README.md"
+)
 
 DEFAULT_SEPARATOR = "    "  # used for sperating columns in print outputs
 SEP = DEFAULT_SEPARATOR
@@ -167,7 +170,6 @@ class GlobalState:
         # stdin pipe assigned?
         self.stdin_use: str = "none"
         self.ctrl: libjamiCtrl = None
-        self.client: Union[None, AsyncClient] = None
         self.account: Union[None, str] = None
         self.send_action = False  # argv contains send action
         self.listen_action = False  # argv contains listen action
@@ -184,6 +186,14 @@ class GlobalState:
 # We want to avoid situation where we would print: name = None
 def zn(str):
     return str or ""
+
+
+def get_qualifiedclassname(obj):
+    klass = obj.__class__
+    module = klass.__module__
+    if module == "builtins":
+        return klass.__qualname__  # avoid outputs like 'builtins.str'
+    return module + "." + klass.__qualname__
 
 
 def print_output(
@@ -214,22 +224,6 @@ def obj_to_dict(obj):
         gs.log.debug(f"obj_to_dict: {obj.__class__}")
         gs.log.debug(f"obj_to_dict: {obj.__class__.__name__}")
         gs.log.debug(f"obj_to_dict: {get_qualifiedclassname(obj)}")
-    # summary: shortcut: just these 2: RequestInfo and ClientResponse
-    # if get_qualifiedclassname(obj) == "aiohttp.client_reqrep.RequestInfo":
-    #     return {obj.__class__.__name__: str(obj)}
-    # if get_qualifiedclassname(obj) == "aiohttp.client_reqrep.ClientResponse":
-    #    return {obj.__class__.__name__: str(obj)}
-    # details, one by one:
-    # if get_qualifiedclassname(obj) == "collections.deque":
-    #     return {obj.__class__.__name__: str(obj)}
-    # if get_qualifiedclassname(obj) == "aiohttp.helpers.TimerContext":
-    #     return {obj.__class__.__name__: str(obj)}
-    # if get_qualifiedclassname(obj) == "asyncio.events.TimerHandle":
-    #     return {obj.__class__.__name__: str(obj)}
-    # if get_qualifiedclassname(obj) =="multidict._multidict.CIMultiDictProxy":
-    #     return {obj.__class__.__name__: str(obj)}
-    # if get_qualifiedclassname(obj) == "aiosignal.Signal":
-    #     return {obj.__class__.__name__: str(obj)}
     # this one is crucial, it make the serialization circular reference.
     if get_qualifiedclassname(obj) == "aiohttp.streams.StreamReader":
         return {obj.__class__.__name__: str(obj)}
@@ -430,7 +424,7 @@ async def send_message(conversations, message):  # noqa: C901
     """Process message.
 
     Format message according to instructions from command line arguments.
-    Then send the one message to all rooms.
+    Then send the one message to all conversations.
 
     Arguments:
     ---------
@@ -502,7 +496,7 @@ async def send_message(conversations, message):  # noqa: C901
         gs.log.debug("Here is the traceback.\n" + traceback.format_exc())
 
 
-async def stream_messages_from_pipe(client, rooms):
+async def stream_messages_from_pipe(conversations):
     """Read input from pipe if available.
 
     Read pipe line by line. For each line received, immediately
@@ -510,8 +504,7 @@ async def stream_messages_from_pipe(client, rooms):
 
     Arguments:
     ---------
-    client : Client
-    rooms : list of room_ids
+    conversations : list of conversationids
 
     """
     stdin_ready = select.select(
@@ -544,7 +537,7 @@ async def stream_messages_from_pipe(client, rooms):
             )
         try:
             for line in sys.stdin:
-                await send_message(client, rooms, line)
+                await send_message(conversations, line)
                 gs.log.debug("Using data from stdin pipe stream as message.")
         except EOFError:  # EOF when reading a line
             gs.log.debug(
@@ -699,8 +692,7 @@ async def send_messages_and_files(conversations, messages):
 
     Arguments:
     ---------
-    client : Client
-    rooms : list of room_ids
+    conversations : list of conversationsids
     messages : list of messages to send
 
     """
@@ -783,7 +775,7 @@ async def process_arguments_and_input(conversations):
 
 
 async def action_conversationsetget() -> None:
-    """Perform room, get, set actions while being logged in."""
+    """Perform conversation, get, set actions while being logged in."""
     if not gs.account:
         gs.log.error(
             "E214: " f"Account not set. Skipping action. {gs.__dict__}"
@@ -793,13 +785,13 @@ async def action_conversationsetget() -> None:
     try:
         # conversation_action
         # if gs.pa.room_create:
-        #     await action_room_create(gs.client, gs.credentials)
+        #     await action_room_create(gs..., gs....)
         if gs.conversation_action:
             gs.log.debug("Conversation action(s) were performed or attempted.")
 
         # set_action
         # if gs.pa.set_display_name:
-        #     await action_set_display_name(gs.client, gs.credentials)
+        #     await action_set_display_name(gs..., gs...)
 
         # get_action
         if gs.pa.get_enabled_accounts:
@@ -811,7 +803,8 @@ async def action_conversationsetget() -> None:
     except Exception as e:
         gs.log.error(
             "E215: "
-            "Error during conversation, set, get actions. Continuing despite error. "
+            "Error during conversation, set, get actions. "
+            "Continuing despite error. "
             f"Exception: {e}"
         )
         gs.log.debug("Here is the traceback.\n" + traceback.format_exc())
@@ -839,6 +832,46 @@ async def action_send() -> None:
         gs.err_count += 1
 
 
+async def action_listen() -> None:
+    """Listen to messages and files."""
+    if not gs.account:
+        gs.log.error("E164: " "Account not set. Skipping action.")
+        gs.err_count += 1
+        return
+    try:
+        gs.log.error(
+            "Listening is not implemented yet. "
+            "Please write a Pull Request to make it happen."
+        )
+        gs.err_count += 1
+        # gs.log.debug(f"Listening type: {gs.pa.listen}")
+        # if gs.pa.listen == FOREVER:
+        #     await listen_forever(gs.client)
+        # elif gs.pa.listen == ONCE:
+        #     await listen_once(gs.client)
+        #     # could use 'await listen_once_alternative(gs.client)'
+        #     # as an alternative implementation
+        # elif gs.pa.listen == TAIL:
+        #     await listen_tail(gs.client, gs.credentials)
+        # elif gs.pa.listen == ALL:
+        #     await listen_all(gs.client, gs.credentials)
+        # else:
+        #     gs.log.error(
+        #         "E165: "
+        #         f'Unrecognized listening type "{gs.pa.listen}". '
+        #         "Skipping listening."
+        #     )
+        #     gs.err_count += 1
+    except Exception as e:
+        gs.log.error(
+            "E166: "
+            "Error during listening. Continuing despite error. "
+            f"Exception: {e}"
+        )
+        gs.log.debug("Here is the traceback.\n" + traceback.format_exc())
+        gs.err_count += 1
+
+
 def create_jami_controller() -> None:
     """Create the Jami controller object
 
@@ -849,14 +882,16 @@ def create_jami_controller() -> None:
     except Exception as e:
         gs.log.error(
             "E234: "
-            "Error during starting the Jami controller, that forms the API to DBUS. "
+            "Error during starting the Jami controller, "
+            "that forms the API to DBUS. "
             "Did you install and run the 'jamid' daemon? "
-            "Read the README.md file to learn how to install and run the 'jamid' daemon process. "
+            "Read the README.md file to learn how to install "
+            "and run the 'jamid' daemon process. "
             f"Exception: {e}"
         )
         gs.err_count += 1
         try:
-            gs.log.debug(f"Trying to automatically start jamid process.")
+            gs.log.debug("Trying to automatically start jamid process.")
             subprocess.Popen(["/usr/libexec/jamid", "-p"])
             time.sleep(3)  # Sleep for 3 seconds
         except Exception as e:
@@ -903,19 +938,22 @@ async def action_account() -> None:
             gs.pa.account = accts[0]
             gs.account = accts[0]
             gs.log.debug(
-                f"Exactly one valid account found: {gs.account}. It will be used."
+                f"Exactly one valid account found: {gs.account}. "
+                "It will be used."
             )
         else:
             txt = (
                 "E234: "
-                "More than one account found. Cannot decide which one. Specify an account by using --account. "
+                "More than one account found. Cannot decide which one. "
+                "Specify an account by using --account. "
                 f"Valid accountids are {accts}."
             )
             gs.err_count += 1
             raise JamiCommanderError(txt)
     else:
         gs.log.debug(
-            f"Account {gs.pa.account} was specified in command line. --account was used."
+            f"Account {gs.pa.account} was specified in command line. "
+            "--account was used."
         )
         # check if account is valid
         # otherwise raise error
@@ -942,7 +980,7 @@ async def async_main() -> None:
     # send
     # listen
     # logout
-    # close client
+    # close session
     # sys.argv ordering? # todo
     try:
         # set the account value
@@ -953,7 +991,7 @@ async def async_main() -> None:
         if gs.send_action:
             await action_send()
         # if gs.pa.room_invites and gs.pa.listen not in (FOREVER, ONCE):
-        #     await listen_invites_once(gs.client)
+        #     await listen_invites_once(gs....)
         if gs.listen_action:
             await action_listen()
         # if gs.pa.logout:
@@ -961,8 +999,8 @@ async def async_main() -> None:
     except Exception:
         raise
     finally:
-        if gs.client:
-            await gs.client.close()
+        # clean up DBUS API connection
+        gs.log.debug("Leaving DBUS session, no cleanup necessary.")
 
 
 def check_arg_files_readable() -> None:
@@ -1095,8 +1133,9 @@ def version() -> None:
         f"{VERSIONNR} {VERSION}\n"
         "          _|    _|            _|     a Jami CLI client\n"
         "          _|    _|              _|   enjoy and submit PRs\n"
-        f"  _|      _|    _|            _|     \n"
-        f"    _|_|_|        _|_|_|    _|       Python: {python_version_nr}\n"
+        f"  _|      _|    _|            _|     Python: {python_version_nr}\n"
+        f"    _|_|_|        _|_|_|    _|       "
+        "https://github.com/8go/jami-commander\n"
         "\n"
     )
     gs.log.debug(version_info)
@@ -1199,7 +1238,7 @@ def initial_check_of_args() -> None:  # noqa: C901
             f'For --version currently only "{PRINT}" '
             f'or "{CHECK}" is allowed as keyword.'
         )
-    elif gs.pa.account != None and (gs.pa.account.strip() == ""):
+    elif gs.pa.account is not None and (gs.pa.account.strip() == ""):
         t = "Don't use an empty name for --account."
     elif gs.pa.output not in (
         OUTPUT_TEXT,
@@ -1219,7 +1258,7 @@ def initial_check_of_args() -> None:  # noqa: C901
     else:
         gs.log.debug("All arguments are valid. All checks passed.")
         return  # all OK
-    # gs.err_count += 1 # do not increment for MatrixCommanderError
+    # gs.err_count += 1 # do not increment for JamiCommanderError
     raise JamiCommanderError("E240: " + t) from None
 
 
@@ -1522,8 +1561,8 @@ def main_inner(
         help='Send message as format "HTML". '
         "Details:: If not specified, message will be sent "
         'as format "TEXT". E.g. that allows some text '
-        "to be bold, etc. Only a subset of HTML tags are "
-        "accepted by Matrix.",
+        "to be bold, etc. Currently no HTML tags are "
+        "accepted by Jami.",
     )
     # -m already used for --message, -z because there were no letters left
     ap.add_argument(
@@ -1702,26 +1741,32 @@ Print debug information.
 Set the log level(s).
 <--verbose>
 Set the verbosity level.
-<-a>, <--account> ACCOUNTID
+<-a> ACCOUNTID, <--account> ACCOUNTID
 Connect to and use the specified account.
-<-c>, <--conversations> CONVERSATIONID [CONVERSATIONID ...]
+<-c> CONVERSATIONID [CONVERSATIONID ...], <--conversations> CONVERSATIONID [CONVERSATIONID ...]
 Specify one or multiple swarm conversations.
 <--get-enabled-accounts>
 List all enabled accounts by ids.
 <--get-conversations>
 List all swarm conversations by ids for the active account.
-<-f>, <--file> FILE [FILE ...]
-Send one or multiple files (e.g. PDF, DOC, MP4).
-<-m>, <--message> TEXT [TEXT ...]
+<-m> TEXT [TEXT ...], <--message> TEXT [TEXT ...]
 Send one or multiple text messages.
-<--code>
+<-f> FILE [FILE ...], <--file> FILE [FILE ...]
+Send one or multiple files (e.g. PDF, DOC, MP4).
+<-w>, <--html>
+Send message as format "HTML".
+<-z>, <--markdown>
+Send message as format "MARKDOWN".
+<-k>, <--code>
 Send message as format "CODE".
+<-j>, <--emojize>
+Send message after emojizing.
 <--split> SEPARATOR
 Split message text into multiple Jami messages.
 <--separator> SEPARATOR
-Set the separator.
-<-o>, <--output> TEXT|JSON
-Specify the output format.
+Set a custom separator used for certain print outs.
+<-o> TEXT|JSON, <--output> TEXT|JSON
+Select an output format.
 <-v> [PRINT|CHECK], -V [PRINT|CHECK], <--version> [PRINT|CHECK]
 Print version information or check for updates.
 """.replace(
