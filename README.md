@@ -31,3 +31,66 @@ Functionality is minimal. You are invited to help to improve `jami-commander`. P
   + `/usr/libexec/jamid -p & # start the jamid daemon`
 + now you can start and run the `jami-commander`
   + try `jami-commander -h` first to see what is available
+
+# Features
+
+```
+jami-commander supports these arguments:
+
+--usage
+  Print usage.
+-h, --help
+  Print help.
+--manual
+  Print manual.
+--readme
+  Print README.md file.
+-d, --debug
+  Print debug information.
+--log-level DEBUG|INFO|WARNING|ERROR|CRITICAL [DEBUG|INFO|WARNING|ERROR|CRITICAL ...]
+  Set the log level(s).
+--verbose
+  Set the verbosity level.
+--add-account ALIAS HOSTNAME USERNAME PASSWORD
+  Add a new Jami account.
+--remove-account ACCOUNTID [ACCOUNTID ...]
+  Remove a Jami account.
+--get-conversations
+  List all swarm conversations by ids.
+--add-conversation
+  Add a conversation to an account.
+--remove-conversation
+  Remove one or multiple conversations from an account.
+--get-conversation-members
+  List all members of one or multiple swarm conversations by ids.
+--add-conversation-member USERID [USERID ...]
+  Add member(s) to one or multiple swarm conversations.
+--remove-conversation-member USERID [USERID ...]
+  Remove member(s) from one or multiple swarm conversations.
+-a ACCOUNTID, --account ACCOUNTID
+  Connect to and use the specified account.
+-c CONVERSATIONID [CONVERSATIONID ...], --conversations CONVERSATIONID [CONVERSATIONID ...]
+  Specify one or multiple swarm conversations.
+--get-enabled-accounts
+  List all enabled accounts by ids.
+-m TEXT [TEXT ...], --message TEXT [TEXT ...]
+  Send one or multiple text messages.
+-f FILE [FILE ...], --file FILE [FILE ...]
+  Send one or multiple files (e.g. PDF, DOC, MP4).
+-w, --html
+  Send message as format "HTML".
+-z, --markdown
+  Send message as format "MARKDOWN".
+-k, --code
+  Send message as format "CODE".
+-j, --emojize
+  Send message after emojizing.
+--split SEPARATOR
+  Split message text into multiple Jami messages.
+--separator SEPARATOR
+  Set a custom separator used for certain print outs.
+-o TEXT|JSON, --output TEXT|JSON
+  Select an output format.
+-v [PRINT|CHECK], -V [PRINT|CHECK], --version [PRINT|CHECK]
+  Print version information or check for updates.
+```
