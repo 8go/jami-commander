@@ -46,7 +46,7 @@ from controller import libjamiCtrl
 
 # version number
 VERSION = "2024-08-23"
-VERSIONNR = "0.2.0"
+VERSIONNR = "0.3.0"
 # jami-commander; for backwards compitability replace _ with -
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0].replace(
     "_", "-"
@@ -87,6 +87,8 @@ SEP = DEFAULT_SEPARATOR
 VERSION_UNUSED_DEFAULT = None  # use None if --version is not specified
 VERSION_USED_DEFAULT = PRINT  # use 'print' by default with --version
 
+ACCT_TYPE_RING = "RING"
+DEFAUL_ACCT_TYPE = ACCT_TYPE_RING
 
 # increment this number and use new incremented number for next warning
 # last unique Wxxx warning number used: W113:
@@ -173,6 +175,7 @@ class GlobalState:
         self.account: Union[None, str] = None
         self.send_action = False  # argv contains send action
         self.listen_action = False  # argv contains listen action
+        self.accountmgmt_action = False  # argv contains account action
         self.conversation_action = False  # argv contains conversation action
         self.set_action = False  # argv contains set action
         self.get_action = False  # argv contains get action
@@ -314,9 +317,38 @@ def cleanup() -> None:
     delete_pid_file()
 
 
-async def action_get_enabled_accounts() -> None:
+def action_add_account() -> None:
+    """Add account."""
+    # gs.pa.add_account : ALIAS HOSTNAME USERNAME PASSWORD
+    accountdetails = {
+        "Account.type": DEFAUL_ACCT_TYPE,
+        "Account.alias": gs.pa.add_account[0],
+        "Account.hostname": gs.pa.add_account[1],
+        "Account.username": gs.pa.add_account[2],
+        "Account.password": gs.pa.add_account[3],
+    }
+    gs.log.debug(f"Adding account with these details: {accountdetails}")
+    accountid = gs.ctrl.addAccount(accountdetails)
+    json_ = {"accountid": accountid}
+    text = accountid
+    # output format controlled via --output flag
+    # json_.pop("transport_response")
+    print_output(
+        gs.pa.output,
+        text=text,
+        json_=json_,
+    )
+
+
+def action_remove_account() -> None:
+    """Remove account."""
+    for acct in gs.pa.remove_account:
+        gs.log.debug(f'Submitted account "{acct}" for removal.')
+        gs.ctrl.removeAccount(acct)
+
+
+def action_get_enabled_accounts() -> None:
     """Get enabled account ids."""
-    # # TODO:
     accts = gs.ctrl.getAllEnabledAccounts()
     json_ = {"accountids": accts}
     text = ""
@@ -332,10 +364,9 @@ async def action_get_enabled_accounts() -> None:
     )
 
 
-async def action_get_conversations() -> None:
+def action_get_conversations() -> None:
     """Get swarm conversation ids associated with the account."""
-    # # TODO:
-    convs = gs.ctrl.listConversations(gs.account)
+    convs = gs.ctrl.getConversations(gs.account)
     json_ = {"accountid": gs.account, "conversationids": convs}
     text = ""
     for conv in convs:
@@ -348,6 +379,125 @@ async def action_get_conversations() -> None:
         text=text,
         json_=json_,
     )
+
+
+def action_add_conversation() -> None:
+    """Add swarm conversation to the account."""
+    convid = gs.ctrl.startConversation(gs.account)
+    json_ = {"accountid": gs.account, "conversationid": convid}
+    text = convid
+    # output format controlled via --output flag
+    # json_.pop("transport_response")
+    print_output(
+        gs.pa.output,
+        text=text,
+        json_=json_,
+    )
+
+
+def action_remove_conversation() -> None:
+    """Remove swarm conversation to the account."""
+    text = ""
+    rmlist = []
+    for conv in gs.pa.conversations:
+        resp = gs.ctrl.removeConversation(gs.account, conv)
+        rmlist.append({"conversationid": conv, "success": resp})
+        text += f"{gs.account}{SEP}{conv}{SEP}success={resp}\n"
+        if resp == 1:
+            gs.log.debug(
+                f"Conversation {conv} was successfully removed "
+                f"from account {gs.account}."
+            )
+        else:
+            gs.log.error(
+                f"Conversation {conv} could not be removed "
+                f"from account {gs.account}. We skip this."
+            )
+            gs.err_count += 1
+    text = text.strip()
+    json_ = {"accountid": gs.account, "remove": rmlist}
+    # output format controlled via --output flag
+    # json_.pop("transport_response")
+    print_output(
+        gs.pa.output,
+        text=text,
+        json_=json_,
+    )
+
+
+def action_get_conversation_members() -> None:
+    """Get members from swarm conversations associated with the account."""
+    if gs.pa.conversations is None:
+        gs.log.info(
+            "No conversations specified. "
+            "Add --conversations in order to use --get-conversation-members."
+        )
+        return
+    memberslist = []
+    text = ""
+    for conv in gs.pa.conversations:
+        members = gs.ctrl.getConversationMembers(gs.account, conv)
+        gs.log.debug(f"members: {members} {type(members)}")
+        # members is an array of dictionaries
+        # dictionaries have members: lastDisplayed, role, uri
+        # the 'uri' is the userid
+        # the role could be 'member' or 'admin' or 'invited' or 'banned'
+        memberslist.append(
+            {
+                "accountid": gs.account,
+                "conversationid": conv,
+                "contacturis": members,
+            }
+        )
+        text += (
+            f"accountid {gs.account}{SEP}conversationid {conv}{SEP}userids "
+        )
+        for member in members:
+            text += f"{member["uri"]}{SEP}"
+        text += "\n"
+    json_ = {"accountid": gs.account, "members": memberslist}
+    text = text.strip()
+    # output format controlled via --output flag
+    # json_.pop("transport_response")
+    print_output(
+        gs.pa.output,
+        text=text,
+        json_=json_,
+    )
+
+
+def action_add_conversation_member() -> None:
+    """This will invite a user to a conversation."""
+    if gs.pa.conversations is None:
+        gs.log.info(
+            "No conversations specified. "
+            "Add --conversations in order to use --get-conversation-members."
+        )
+        return
+    for conv in gs.pa.conversations:
+        for userid in gs.pa.add_conversation_member:
+            gs.log.debug(
+                f"Submitted user {userid} to be added to "
+                f"conversation {conv} in account {gs.account} as members."
+            )
+            gs.ctrl.addConversationMember(gs.account, conv, userid)
+
+
+def action_remove_conversation_member() -> None:
+    """This will ban a user from a conversation."""
+    if gs.pa.conversations is None:
+        gs.log.info(
+            "No conversations specified. "
+            "Add --conversations in order to use --get-conversation-members."
+        )
+        return
+    for conv in gs.pa.conversations:
+        for userid in gs.pa.remove_conversation_member:
+            gs.log.debug(
+                f"Submitted user {userid} to be removed from "
+                f"conversation {conv} in account {gs.account} as members."
+            )
+            gs.ctrl.removeConversationMember(gs.account, conv, userid)
 
 
 # according to linter: function is too complex, C901
@@ -774,6 +924,27 @@ async def process_arguments_and_input(conversations):
         await stream_messages_from_pipe(conversations)
 
 
+async def action_accountmgmt() -> None:
+    """Perform actions on account(s)."""
+    try:
+        # accountmgmt_action
+        if gs.pa.add_account:
+            action_add_account()
+        if gs.pa.remove_account:
+            action_remove_account()
+        if gs.pa.get_enabled_accounts:
+            action_get_enabled_accounts()
+    except Exception as e:
+        gs.log.error(
+            "E256: "
+            "Error during accountmgmt actions. "
+            "Continuing despite error. "
+            f"Exception: {e}"
+        )
+        gs.log.debug("Here is the traceback.\n" + traceback.format_exc())
+        gs.err_count += 1
+
+
 async def action_conversationsetget() -> None:
     """Perform conversation, get, set actions while being logged in."""
     if not gs.account:
@@ -784,20 +955,25 @@ async def action_conversationsetget() -> None:
         return
     try:
         # conversation_action
-        # if gs.pa.room_create:
-        #     await action_room_create(gs..., gs....)
-        if gs.conversation_action:
-            gs.log.debug("Conversation action(s) were performed or attempted.")
+        if gs.pa.add_conversation:
+            action_add_conversation()
+        if gs.pa.remove_conversation:
+            action_remove_conversation()
+        if gs.pa.add_conversation_member:
+            action_add_conversation_member()
+        if gs.pa.remove_conversation_member:
+            action_remove_conversation_member()
 
         # set_action
         # if gs.pa.set_display_name:
         #     await action_set_display_name(gs..., gs...)
 
         # get_action
-        if gs.pa.get_enabled_accounts:
-            await action_get_enabled_accounts()
         if gs.pa.get_conversations:
-            await action_get_conversations()
+            action_get_conversations()
+        if gs.pa.get_conversation_members:
+            action_get_conversation_members()
+        # set action
         if gs.setget_action:
             gs.log.debug("Set or get action(s) were performed or attempted.")
     except Exception as e:
@@ -911,13 +1087,15 @@ def create_jami_controller() -> None:
     gs.log.debug(f"Jami controller object ctrl set. {gs.ctrl.__dict__}")
 
 
-async def action_account() -> None:
+def action_account() -> None:
     """Set the accountid.
 
     Sets the global accountid or raises an exception to quit program.
     Sets gs.account  (not gs.pa.account)
     """
-    create_jami_controller()
+    if gs.account is not None:
+        # alread set
+        return
     accts = gs.ctrl.getAllEnabledAccounts()
     for acct in accts:
         details = gs.ctrl.getAccountDetails(acct)
@@ -983,16 +1161,22 @@ async def async_main() -> None:
     # close session
     # sys.argv ordering? # todo
     try:
-        # set the account value
-        await action_account()
-        gs.log.debug("Todo: async_main")
+        create_jami_controller()
+        gs.log.debug("In function async_main().")
+        if gs.accountmgmt_action:
+            # do NOT set the account value --account
+            await action_accountmgmt()
         if gs.conversation_action or gs.setget_action:
+            action_account()  # set the account value --account
             await action_conversationsetget()
         if gs.send_action:
+            action_account()  # set the account value --account
             await action_send()
         # if gs.pa.room_invites and gs.pa.listen not in (FOREVER, ONCE):
+        #    action_account() # set the account value --account
         #     await listen_invites_once(gs....)
         if gs.listen_action:
+            action_account()  # set the account value --account
             await action_listen()
         # if gs.pa.logout:
         #     await action_logout()
@@ -1195,6 +1379,23 @@ def initial_check_of_args() -> None:  # noqa: C901
     if gs.pa.output is not None:
         gs.pa.output = gs.pa.output.lower()
 
+    # accountmgmt
+    if gs.pa.add_account or gs.pa.remove_account or gs.pa.get_enabled_accounts:
+        gs.accountmgmt_action = True
+    else:
+        gs.accountmgmt_action = False
+
+    # conversation
+    if (
+        gs.pa.add_conversation
+        or gs.pa.remove_conversation
+        or gs.pa.add_conversation_member
+        or gs.pa.remove_conversation_member
+    ):
+        gs.conversation_action = True
+    else:
+        gs.conversation_action = False
+
     # send
     if gs.pa.message or gs.pa.file:
         gs.send_action = True
@@ -1202,7 +1403,7 @@ def initial_check_of_args() -> None:  # noqa: C901
         gs.send_action = False
 
     # get
-    if gs.pa.get_enabled_accounts or gs.pa.get_conversations:
+    if gs.pa.get_conversations or gs.pa.get_conversation_members:
         gs.get_action = True
     else:
         gs.get_action = False
@@ -1431,6 +1632,109 @@ def main_inner(
         "Verbosity only affects the debug information. "
         "So, if '--debug' is not used then '--verbose' will be ignored.",
     )
+
+    ap.add_argument(
+        "--add-account",
+        required=False,
+        action="extend",
+        nargs=4,
+        type=str,
+        metavar=("ALIAS", "HOSTNAME", "USERNAME", "PASSWORD"),
+        help="Add a new Jami account. "
+        "Details:: You can add, i.e. create, as many accounts as you wish. "
+        "An account will be identified by an account id, "
+        "a long random looking hexadecial string. "
+        'Provide 4 values, each one can be set to empty string "" '
+        "if desired.",
+    )
+
+    ap.add_argument(
+        "--remove-account",
+        required=False,
+        action="extend",
+        nargs="+",
+        type=str,
+        metavar="ACCOUNTID",
+        help="Remove a Jami account. "
+        "Details:: Specify one or multiple accounts by id to be removed. ",
+    )
+
+    ap.add_argument(
+        "--get-conversations",
+        required=False,
+        action="store_true",
+        help="List all swarm conversations by ids. "
+        "Details:: Prints all swarm conversations ids "
+        "associated with the account in --account or "
+        "the automatically chosen account.",
+    )
+
+    ap.add_argument(
+        "--add-conversation",
+        required=False,
+        action="store_true",
+        help="Add a conversation to an account. "
+        "Details:: You can add, i.e. create, as many swarm conversation "
+        "as you wish. "
+        "A swarm conversation will be identified by an conversation id, "
+        "a long random looking hexadecial string. "
+        "The conversation is associated with the account in --account.",
+    )
+
+    ap.add_argument(
+        "--remove-conversation",
+        required=False,
+        action="store_true",
+        help="Remove one or multiple conversations from an account. "
+        "Details:: Specify one or multiple accounts by id to be removed "
+        "in the --conversations argument. ",
+    )
+
+    ap.add_argument(
+        "--get-conversation-members",
+        required=False,
+        action="store_true",
+        help="List all members of one or multiple swarm conversations by ids. "
+        "Details:: Prints all members of the swarm conversations "
+        "specified with --conversations. "
+        "They must be associated with the account in --account or "
+        "the automatically chosen account.",
+    )
+
+    ap.add_argument(
+        "--add-conversation-member",
+        required=False,
+        action="extend",
+        nargs="+",
+        type=str,
+        metavar="USERID",
+        help="Add member(s) to one or multiple swarm conversations. "
+        "Details:: You can add one or multple members to "
+        "one or multiple conversations of the same account. "
+        "Members are specified with --add-conversation-member. "
+        "Conversations are specified with --conversations. "
+        "A swarm conversation will be identified by an conversation id, "
+        "a long random looking hexadecial string. "
+        "The conversations are associated with the account in --account.",
+    )
+
+    ap.add_argument(
+        "--remove-conversation-member",
+        required=False,
+        action="extend",
+        nargs="+",
+        type=str,
+        metavar="USERID",
+        help="Remove member(s) from one or multiple swarm conversations. "
+        "Details:: You can remove one or multple members from "
+        "one or multiple conversations of the same account. "
+        "Members are specified with --add-conversation-member. "
+        "Conversations are specified with --conversations. "
+        "A swarm conversation will be identified by an conversation id, "
+        "a long random looking hexadecial string. "
+        "The conversations are associated with the account in --account.",
+    )
+
     ap.add_argument(
         "-a",
         "--account",
@@ -1442,7 +1746,8 @@ def main_inner(
         "This is not the user name but the long random looking "
         "string made up of hexadecimal digits. "
         "If --account is not used then {PROG_WITHOUT_EXT} will "
-        "try to automatically detect and use an enabled account.",
+        "try to automatically detect and use an enabled account. "
+        "To be used by arguments like --message and -file. ",
     )
 
     ap.add_argument(
@@ -1461,7 +1766,10 @@ def main_inner(
         "various listen actions. "
         "The chosen account must have access to the specified conversations "
         "in order to send messages there or listen on the conversations. "
-        "Messages cannot be sent to arbitrary conversations.",
+        "Messages cannot be sent to arbitrary conversations."
+        "This is used in --message, --file, --remove-conversation, "
+        "--get-conversation-members, --add-conversation-members, "
+        "--remove-conversation-member.",
     )
 
     ap.add_argument(
@@ -1470,15 +1778,6 @@ def main_inner(
         action="store_true",
         help="List all enabled accounts by ids. "
         "Details:: Prints all enabled account ids.",
-    )
-
-    ap.add_argument(
-        "--get-conversations",
-        required=False,
-        action="store_true",
-        help="List all swarm conversations by ids for the active account. "
-        "Details:: Prints the swarm ids all swarm conversations associated "
-        "with the specified or automatically chosen account.",
     )
 
     # allow multiple messages , e.g. -m "m1" "m2" or -m "m1" -m "m2"
@@ -1528,7 +1827,8 @@ def main_inner(
         f"{PROG_WITHOUT_EXT} stays active, sending all input instantly. "
         "If you want to send the literal letter '_' then escape it "
         "and send '\\_'. "
-        "'_' can be used only once. And either '-' or '_' can be used. ",
+        "'_' can be used only once. And either '-' or '_' can be used. "
+        "See also --conversations. ",
     )
 
     # allow multiple files , e.g. -f "a1.pdf" "a2.doc"
@@ -1549,7 +1849,8 @@ def main_inner(
         "then text messages are sent. "
         f"If you want to feed a file into {PROG_WITHOUT_EXT} "
         "via a pipe, via stdin, then specify the special "
-        "character '-'. See description of '-m' to see how '-' is handled.",
+        "character '-'. See description of '-m' to see how '-' is handled. "
+        "See also --conversations. ",
     )
 
     # -h already used for --help, -w for "web"
@@ -1741,14 +2042,28 @@ Print debug information.
 Set the log level(s).
 <--verbose>
 Set the verbosity level.
+<--add-account> ALIAS HOSTNAME USERNAME PASSWORD
+Add a new Jami account.
+<--remove-account> ACCOUNTID [ACCOUNTID ...]
+Remove a Jami account.
+<--get-conversations>
+List all swarm conversations by ids.
+<--add-conversation>
+Add a conversation to an account.
+<--remove-conversation>
+Remove one or multiple conversations from an account.
+<--get-conversation-members>
+List all members of one or multiple swarm conversations by ids.
+<--add-conversation-member> USERID [USERID ...]
+Add member(s) to one or multiple swarm conversations.
+<--remove-conversation-member> USERID [USERID ...]
+Remove member(s) from one or multiple swarm conversations.
 <-a> ACCOUNTID, <--account> ACCOUNTID
 Connect to and use the specified account.
 <-c> CONVERSATIONID [CONVERSATIONID ...], <--conversations> CONVERSATIONID [CONVERSATIONID ...]
 Specify one or multiple swarm conversations.
 <--get-enabled-accounts>
 List all enabled accounts by ids.
-<--get-conversations>
-List all swarm conversations by ids for the active account.
 <-m> TEXT [TEXT ...], <--message> TEXT [TEXT ...]
 Send one or multiple text messages.
 <-f> FILE [FILE ...], <--file> FILE [FILE ...]
@@ -1920,6 +2235,7 @@ Print version information or check for updates.
         if not (
             gs.send_action
             # todo
+            or gs.accountmgmt_action
             or gs.conversation_action
             or gs.listen_action
             # or gs.pa.listen != LISTEN_DEFAULT

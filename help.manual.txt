@@ -14,11 +14,17 @@ use --help instead of --manual.
 
 usage: jami-commander [--usage] [-h] [--manual] [--readme] [-d]
                       [--log-level DEBUG|INFO|WARNING|ERROR|CRITICAL [DEBUG|INFO|WARNING|ERROR|CRITICAL ...]]
-                      [--verbose] [-a ACCOUNTID]
-                      [-c CONVERSATIONID [CONVERSATIONID ...]]
-                      [--get-enabled-accounts] [--get-conversations]
-                      [-m TEXT [TEXT ...]] [-f FILE [FILE ...]] [-w] [-z] [-k]
-                      [-j] [--split SEPARATOR] [--separator SEPARATOR]
+                      [--verbose]
+                      [--add-account ALIAS HOSTNAME USERNAME PASSWORD]
+                      [--remove-account ACCOUNTID [ACCOUNTID ...]]
+                      [--get-conversations] [--add-conversation]
+                      [--remove-conversation] [--get-conversation-members]
+                      [--add-conversation-member USERID [USERID ...]]
+                      [--remove-conversation-member USERID [USERID ...]]
+                      [-a ACCOUNTID] [-c CONVERSATIONID [CONVERSATIONID ...]]
+                      [--get-enabled-accounts] [-m TEXT [TEXT ...]]
+                      [-f FILE [FILE ...]] [-w] [-z] [-k] [-j]
+                      [--split SEPARATOR] [--separator SEPARATOR]
                       [-o TEXT|JSON] [-v [PRINT|CHECK]]
 
 Welcome to jami-commander, a Jami CLI client.
@@ -59,13 +65,64 @@ options:
                         be very high. Verbosity only affects the debug
                         information. So, if '--debug' is not used then '--
                         verbose' will be ignored.
+  --add-account ALIAS HOSTNAME USERNAME PASSWORD
+                        Add a new Jami account. Details:: You can add, i.e.
+                        create, as many accounts as you wish. An account will
+                        be identified by an account id, a long random looking
+                        hexadecial string. Provide 4 values, each one can be
+                        set to empty string "" if desired.
+  --remove-account ACCOUNTID [ACCOUNTID ...]
+                        Remove a Jami account. Details:: Specify one or
+                        multiple accounts by id to be removed.
+  --get-conversations   List all swarm conversations by ids. Details:: Prints
+                        all swarm conversations ids associated with the
+                        account in --account or the automatically chosen
+                        account.
+  --add-conversation    Add a conversation to an account. Details:: You can
+                        add, i.e. create, as many swarm conversation as you
+                        wish. A swarm conversation will be identified by an
+                        conversation id, a long random looking hexadecial
+                        string. The conversation is associated with the
+                        account in --account.
+  --remove-conversation
+                        Remove one or multiple conversations from an account.
+                        Details:: Specify one or multiple accounts by id to be
+                        removed in the --conversations argument.
+  --get-conversation-members
+                        List all members of one or multiple swarm
+                        conversations by ids. Details:: Prints all members of
+                        the swarm conversations specified with
+                        --conversations. They must be associated with the
+                        account in --account or the automatically chosen
+                        account.
+  --add-conversation-member USERID [USERID ...]
+                        Add member(s) to one or multiple swarm conversations.
+                        Details:: You can add one or multple members to one or
+                        multiple conversations of the same account. Members
+                        are specified with --add-conversation-member.
+                        Conversations are specified with --conversations. A
+                        swarm conversation will be identified by an
+                        conversation id, a long random looking hexadecial
+                        string. The conversations are associated with the
+                        account in --account.
+  --remove-conversation-member USERID [USERID ...]
+                        Remove member(s) from one or multiple swarm
+                        conversations. Details:: You can remove one or multple
+                        members from one or multiple conversations of the same
+                        account. Members are specified with --add-
+                        conversation-member. Conversations are specified with
+                        --conversations. A swarm conversation will be
+                        identified by an conversation id, a long random
+                        looking hexadecial string. The conversations are
+                        associated with the account in --account.
   -a ACCOUNTID, --account ACCOUNTID
                         Connect to and use the specified account. Details::
                         This requires exactly one argument, the account id.
                         This is not the user name but the long random looking
                         string made up of hexadecimal digits. If --account is
                         not used then {PROG_WITHOUT_EXT} will try to
-                        automatically detect and use an enabled account.
+                        automatically detect and use an enabled account. To be
+                        used by arguments like --message and -file.
   -c CONVERSATIONID [CONVERSATIONID ...], --conversations CONVERSATIONID [CONVERSATIONID ...]
                         Specify one or multiple swarm conversations. Details::
                         Optionally specify one or multiple swarm conversations
@@ -75,14 +132,13 @@ options:
                         actions. The chosen account must have access to the
                         specified conversations in order to send messages
                         there or listen on the conversations. Messages cannot
-                        be sent to arbitrary conversations.
+                        be sent to arbitrary conversations.This is used in
+                        --message, --file, --remove-conversation, --get-
+                        conversation-members, --add-conversation-members,
+                        --remove-conversation-member.
   --get-enabled-accounts
                         List all enabled accounts by ids. Details:: Prints all
                         enabled account ids.
-  --get-conversations   List all swarm conversations by ids for the active
-                        account. Details:: Prints the swarm ids all swarm
-                        conversations associated with the specified or
-                        automatically chosen account.
   -m TEXT [TEXT ...], --message TEXT [TEXT ...]
                         Send one or multiple text messages. Details:: Message
                         data must not be binary data, it must be text. If no
@@ -120,7 +176,8 @@ options:
                         commander, and jami-commander stays active, sending
                         all input instantly. If you want to send the literal
                         letter '_' then escape it and send '\_'. '_' can be
-                        used only once. And either '-' or '_' can be used.
+                        used only once. And either '-' or '_' can be used. See
+                        also --conversations.
   -f FILE [FILE ...], --file FILE [FILE ...]
                         Send one or multiple files (e.g. PDF, DOC, MP4).
                         Details:: This option can be used multiple times to
@@ -128,7 +185,7 @@ options:
                         messages are sent. If you want to feed a file into
                         jami-commander via a pipe, via stdin, then specify the
                         special character '-'. See description of '-m' to see
-                        how '-' is handled.
+                        how '-' is handled. See also --conversations.
   -w, --html            Send message as format "HTML". Details:: If not
                         specified, message will be sent as format "TEXT". E.g.
                         that allows some text to be bold, etc. Currently no
@@ -194,5 +251,5 @@ options:
                         the program will continue to run. This is useful for
                         having version number in the log files.
 
-You are running version 0.2.0 2024-08-23. Enjoy, star on Github and contribute
+You are running version 0.3.0 2024-08-23. Enjoy, star on Github and contribute
 by submitting a Pull Request.

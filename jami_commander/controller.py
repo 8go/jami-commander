@@ -476,7 +476,7 @@ class libjamiCtrl(Thread):
     def addAccount(self, details=None):
         """Add a new account account
 
-        Add a new account to the daemon. Default parameters are \
+        Add a new account to the daemon. Default parameters are
         used for missing account configuration field.
 
         Required parameters are type, alias, hostname, username and password
@@ -808,19 +808,24 @@ class libjamiCtrl(Thread):
     def startConversation(self, account):
         return self.configurationmanager.startConversation(account)
 
-    def listConversations(self, account):
+    def getConversations(self, account):
         return self.configurationmanager.getConversations(account)
 
-    def listConversationsRequests(self, account):
+    def getConversationsRequests(self, account):
         return self.configurationmanager.getConversationRequests(account)
 
-    def listConversationsMembers(self, account, conversationId):
+    def getConversationMembers(self, account, conversationId):
         return self.configurationmanager.getConversationMembers(
             account, conversationId
         )
 
     def addConversationMember(self, account, conversationId, member):
         return self.configurationmanager.addConversationMember(
+            account, conversationId, member
+        )
+
+    def removeConversationMember(self, account, conversationId, member):
+        return self.configurationmanager.removeConversationMember(
             account, conversationId, member
         )
 

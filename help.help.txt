@@ -17,6 +17,22 @@ jami-commander supports these arguments:
   Set the log level(s).
 --verbose
   Set the verbosity level.
+--add-account ALIAS HOSTNAME USERNAME PASSWORD
+  Add a new Jami account.
+--remove-account ACCOUNTID [ACCOUNTID ...]
+  Remove a Jami account.
+--get-conversations
+  List all swarm conversations by ids.
+--add-conversation
+  Add a conversation to an account.
+--remove-conversation
+  Remove one or multiple conversations from an account.
+--get-conversation-members
+  List all members of one or multiple swarm conversations by ids.
+--add-conversation-member USERID [USERID ...]
+  Add member(s) to one or multiple swarm conversations.
+--remove-conversation-member USERID [USERID ...]
+  Remove member(s) from one or multiple swarm conversations.
 -a ACCOUNTID, --account ACCOUNTID
   Connect to and use the specified account.
 -c CONVERSATIONID [CONVERSATIONID ...], --conversations CONVERSATIONID
@@ -24,8 +40,6 @@ jami-commander supports these arguments:
   Specify one or multiple swarm conversations.
 --get-enabled-accounts
   List all enabled accounts by ids.
---get-conversations
-  List all swarm conversations by ids for the active account.
 -m TEXT [TEXT ...], --message TEXT [TEXT ...]
   Send one or multiple text messages.
 -f FILE [FILE ...], --file FILE [FILE ...]
@@ -47,5 +61,5 @@ jami-commander supports these arguments:
 -v [PRINT|CHECK], -V [PRINT|CHECK], --version [PRINT|CHECK]
   Print version information or check for updates.
 
-You are running version 0.2.0 2024-08-23. Enjoy, star on Github and contribute
+You are running version 0.3.0 2024-08-23. Enjoy, star on Github and contribute
 by submitting a Pull Request.
