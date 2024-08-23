@@ -174,8 +174,9 @@ cython_debug/
 README.md.*
 jami-commander.py.*
 jami_commander.20*
-/jami_commander/jami-commander.py.*
-/jami_commander/matrix-commander*
+/jami_commander/jami-commander.*
+/jami_commander/jami_commander.py.*
+/jami_commander/matrix_commander*
 setup.cfg.*
 
 # ignore help file
