@@ -3,27 +3,6 @@ asyncio
 async-timeout # see Issue 161
 dbus-python
 emoji
-errno
-functools
-hashlib
-json
-logging
 markdown
-os
-pkg_resources
 PyGObject # for controller.py:from gi.repository import GLib
-random
-re
-select
-setuptools
-signal
-subprocess
-sys
-tempfile
-textwrap
-threading
-time
-traceback
-typing
-urllib
 uuid

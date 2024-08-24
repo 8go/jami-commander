@@ -45,8 +45,8 @@ import pkg_resources
 from controller import libjamiCtrl
 
 # version number
-VERSION = "2024-08-23"
-VERSIONNR = "0.3.0"
+VERSION = "2024-08-24"
+VERSIONNR = "0.4.0"
 # jami-commander; for backwards compitability replace _ with -
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0].replace(
     "_", "-"
@@ -1634,6 +1634,14 @@ def main_inner(
     )
 
     ap.add_argument(
+        "--get-enabled-accounts",
+        required=False,
+        action="store_true",
+        help="List all enabled accounts by ids. "
+        "Details:: Prints all enabled account ids.",
+    )
+
+    ap.add_argument(
         "--add-account",
         required=False,
         action="extend",
@@ -1770,14 +1778,6 @@ def main_inner(
         "This is used in --message, --file, --remove-conversation, "
         "--get-conversation-members, --add-conversation-members, "
         "--remove-conversation-member.",
-    )
-
-    ap.add_argument(
-        "--get-enabled-accounts",
-        required=False,
-        action="store_true",
-        help="List all enabled accounts by ids. "
-        "Details:: Prints all enabled account ids.",
     )
 
     # allow multiple messages , e.g. -m "m1" "m2" or -m "m1" -m "m2"
@@ -2042,6 +2042,8 @@ Print debug information.
 Set the log level(s).
 <--verbose>
 Set the verbosity level.
+<--get-enabled-accounts>
+List all enabled accounts by ids.
 <--add-account> ALIAS HOSTNAME USERNAME PASSWORD
 Add a new Jami account.
 <--remove-account> ACCOUNTID [ACCOUNTID ...]
@@ -2062,8 +2064,6 @@ Remove member(s) from one or multiple swarm conversations.
 Connect to and use the specified account.
 <-c> CONVERSATIONID [CONVERSATIONID ...], <--conversations> CONVERSATIONID [CONVERSATIONID ...]
 Specify one or multiple swarm conversations.
-<--get-enabled-accounts>
-List all enabled accounts by ids.
 <-m> TEXT [TEXT ...], <--message> TEXT [TEXT ...]
 Send one or multiple text messages.
 <-f> FILE [FILE ...], <--file> FILE [FILE ...]

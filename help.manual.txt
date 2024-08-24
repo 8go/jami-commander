@@ -14,7 +14,7 @@ use --help instead of --manual.
 
 usage: jami-commander [--usage] [-h] [--manual] [--readme] [-d]
                       [--log-level DEBUG|INFO|WARNING|ERROR|CRITICAL [DEBUG|INFO|WARNING|ERROR|CRITICAL ...]]
-                      [--verbose]
+                      [--verbose] [--get-enabled-accounts]
                       [--add-account ALIAS HOSTNAME USERNAME PASSWORD]
                       [--remove-account ACCOUNTID [ACCOUNTID ...]]
                       [--get-conversations] [--add-conversation]
@@ -22,9 +22,8 @@ usage: jami-commander [--usage] [-h] [--manual] [--readme] [-d]
                       [--add-conversation-member USERID [USERID ...]]
                       [--remove-conversation-member USERID [USERID ...]]
                       [-a ACCOUNTID] [-c CONVERSATIONID [CONVERSATIONID ...]]
-                      [--get-enabled-accounts] [-m TEXT [TEXT ...]]
-                      [-f FILE [FILE ...]] [-w] [-z] [-k] [-j]
-                      [--split SEPARATOR] [--separator SEPARATOR]
+                      [-m TEXT [TEXT ...]] [-f FILE [FILE ...]] [-w] [-z] [-k]
+                      [-j] [--split SEPARATOR] [--separator SEPARATOR]
                       [-o TEXT|JSON] [-v [PRINT|CHECK]]
 
 Welcome to jami-commander, a Jami CLI client.
@@ -65,6 +64,9 @@ options:
                         be very high. Verbosity only affects the debug
                         information. So, if '--debug' is not used then '--
                         verbose' will be ignored.
+  --get-enabled-accounts
+                        List all enabled accounts by ids. Details:: Prints all
+                        enabled account ids.
   --add-account ALIAS HOSTNAME USERNAME PASSWORD
                         Add a new Jami account. Details:: You can add, i.e.
                         create, as many accounts as you wish. An account will
@@ -136,9 +138,6 @@ options:
                         --message, --file, --remove-conversation, --get-
                         conversation-members, --add-conversation-members,
                         --remove-conversation-member.
-  --get-enabled-accounts
-                        List all enabled accounts by ids. Details:: Prints all
-                        enabled account ids.
   -m TEXT [TEXT ...], --message TEXT [TEXT ...]
                         Send one or multiple text messages. Details:: Message
                         data must not be binary data, it must be text. If no
@@ -251,5 +250,5 @@ options:
                         the program will continue to run. This is useful for
                         having version number in the log files.
 
-You are running version 0.3.0 2024-08-23. Enjoy, star on Github and contribute
+You are running version 0.4.0 2024-08-24. Enjoy, star on Github and contribute
 by submitting a Pull Request.

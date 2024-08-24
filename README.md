@@ -19,13 +19,22 @@ Functionality is minimal. You are invited to help to improve `jami-commander`. P
 # Installation and Prerequisites
 
 + `jami-commander` is only a client. It requires the Jami `jamid` daemon to run to performs the work.
-+ install `jami-commander`
-  + `pip jami-commander`
-  + see also https://pypi.org/pypi/jami-commander
-+ install Jami daemon `jamid` as follows:
-  + e.g. on Fedora 40, similar on Ubuntu 24.04, etc.
++ first install Jami daemon `jamid` as follows:
+  + e.g. on Fedora 40 (see https://jami.net/download-jami-linux/ for details)
   + `sudo dnf-3 config-manager --add-repo https://dl.jami.net/stable/fedora_40/jami-stable.repo # add the Jami repo`
   + `sudo dnf install jami-daemon # install only the jamid daemon`
+  + e.g. on Ubuntu 24.04 (see https://jami.net/download-jami-linux/ for details)
+  + ```sudo apt install gnupg dirmngr ca-certificates curl --no-install-recommends
+curl -s https://dl.jami.net/public-key.gpg | sudo tee /usr/share/keyrings/jami-archive-keyring.gpg > /dev/null
+sudo sh -c "echo 'deb [signed-by=/usr/share/keyrings/jami-archive-keyring.gpg] https://dl.jami.net/stable/ubuntu_24.04/ jami main' > /etc/apt/sources.list.d/jami.list"
+sudo apt-get update && sudo apt-get install jami-daemon # install only the jamid daemon```
+  + This installs around 204MB on Ubuntu
++ second install dependencies
+  + e.g. Ubuntu 24.04
+  + `sudo apt install libdbus-1-dev libglib2.0-dev`
++ third install `jami-commander`
+  + `pip install jami-commander`
+  + see also https://pypi.org/pypi/jami-commander
 + run the `jamid` daemon:
   + e.g. on Fedora 40, similar on Ubuntu 24.04, etc.
   + `/usr/libexec/jamid -p & # start the jamid daemon`
@@ -51,6 +60,8 @@ jami-commander supports these arguments:
   Set the log level(s).
 --verbose
   Set the verbosity level.
+--get-enabled-accounts
+  List all enabled accounts by ids.
 --add-account ALIAS HOSTNAME USERNAME PASSWORD
   Add a new Jami account.
 --remove-account ACCOUNTID [ACCOUNTID ...]
@@ -71,8 +82,6 @@ jami-commander supports these arguments:
   Connect to and use the specified account.
 -c CONVERSATIONID [CONVERSATIONID ...], --conversations CONVERSATIONID [CONVERSATIONID ...]
   Specify one or multiple swarm conversations.
---get-enabled-accounts
-  List all enabled accounts by ids.
 -m TEXT [TEXT ...], --message TEXT [TEXT ...]
   Send one or multiple text messages.
 -f FILE [FILE ...], --file FILE [FILE ...]
