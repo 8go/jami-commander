@@ -42,11 +42,12 @@ from typing import Literal, Union
 import emoji
 import markdown
 import pkg_resources
-from controller import libjamiCtrl
+# local
+from controller.controller import libjamiCtrl
 
 # version number
-VERSION = "2024-08-24"
-VERSIONNR = "0.4.0"
+VERSION = "2024-08-25"
+VERSIONNR = "0.5.0"
 # jami-commander; for backwards compitability replace _ with -
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0].replace(
     "_", "-"

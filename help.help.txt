@@ -61,5 +61,5 @@ jami-commander supports these arguments:
 -v [PRINT|CHECK], -V [PRINT|CHECK], --version [PRINT|CHECK]
   Print version information or check for updates.
 
-You are running version 0.4.0 2024-08-24. Enjoy, star on Github and contribute
+You are running version 0.5.0 2024-08-25. Enjoy, star on Github and contribute
 by submitting a Pull Request.

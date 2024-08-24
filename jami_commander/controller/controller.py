@@ -32,13 +32,15 @@ import hashlib
 
 from threading import Thread
 from functools import partial
-from errorsDring import (
+from gi.repository import GLib
+
+# local
+from controller.errorsDring import (
     libjamiCtrlAccountError,
     libjamiCtrlError,
     libjamiCtrlDBusError,
     libjamiCtrlDeamonError,
 )
-from gi.repository import GLib
 
 try:
     import dbus

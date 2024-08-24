@@ -31,7 +31,7 @@ sudo apt-get update && sudo apt-get install jami-daemon # install only the jamid
   + This installs around 204MB on Ubuntu
 + second install dependencies
   + e.g. Ubuntu 24.04
-  + `sudo apt install libdbus-1-dev libglib2.0-dev`
+  + `sudo apt install libdbus-1-dev libglib2.0-dev libcairo2-dev libgirepository1.0-dev`
 + third install `jami-commander`
   + `pip install jami-commander`
   + see also https://pypi.org/pypi/jami-commander
