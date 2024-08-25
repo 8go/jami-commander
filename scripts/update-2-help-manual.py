@@ -24,7 +24,8 @@ date_string = now.strftime("%Y%m%d-%H%M%S")
 
 helpfile = "help.manual.txt"
 filename = "README.md"
-executable = "jami_commander/jami-commander"
+# executable = "jami_commander/jami-commander"
+executable = "jc"
 
 if isfile(filename) and access(filename, R_OK):
     # so that subprocess can execute it without PATH

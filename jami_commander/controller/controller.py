@@ -35,7 +35,7 @@ from functools import partial
 from gi.repository import GLib
 
 # local
-from controller.errorsDring import (
+from .errorsDring import (
     libjamiCtrlAccountError,
     libjamiCtrlError,
     libjamiCtrlDBusError,

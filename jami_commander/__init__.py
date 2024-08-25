@@ -1,1 +1,1 @@
-from .jami_commander import main
+# from .jami_commander import main

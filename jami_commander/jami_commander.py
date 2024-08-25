@@ -42,12 +42,13 @@ from typing import Literal, Union
 import emoji
 import markdown
 import pkg_resources
+
 # local
-from controller.controller import libjamiCtrl
+from .controller import libjamiCtrl
 
 # version number
 VERSION = "2024-08-25"
-VERSIONNR = "0.5.0"
+VERSIONNR = "0.6.0"
 # jami-commander; for backwards compitability replace _ with -
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0].replace(
     "_", "-"
@@ -2327,4 +2328,5 @@ def main(argv: Union[None, list] = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
 # EOF

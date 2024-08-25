@@ -1,18 +1,19 @@
 Welcome to jami-commander, a Jami CLI client.
 
-usage: jami-commander [--usage] [-h] [--manual] [--readme] [-d]
-                      [--log-level DEBUG|INFO|WARNING|ERROR|CRITICAL [DEBUG|INFO|WARNING|ERROR|CRITICAL ...]]
-                      [--verbose] [--get-enabled-accounts]
-                      [--add-account ALIAS HOSTNAME USERNAME PASSWORD]
-                      [--remove-account ACCOUNTID [ACCOUNTID ...]]
-                      [--get-conversations] [--add-conversation]
-                      [--remove-conversation] [--get-conversation-members]
-                      [--add-conversation-member USERID [USERID ...]]
-                      [--remove-conversation-member USERID [USERID ...]]
-                      [-a ACCOUNTID] [-c CONVERSATIONID [CONVERSATIONID ...]]
-                      [-m TEXT [TEXT ...]] [-f FILE [FILE ...]] [-w] [-z] [-k]
-                      [-j] [--split SEPARATOR] [--separator SEPARATOR]
-                      [-o TEXT|JSON] [-v [PRINT|CHECK]]
+usage: jami_commander.py [--usage] [-h] [--manual] [--readme] [-d]
+                         [--log-level DEBUG|INFO|WARNING|ERROR|CRITICAL [DEBUG|INFO|WARNING|ERROR|CRITICAL ...]]
+                         [--verbose] [--get-enabled-accounts]
+                         [--add-account ALIAS HOSTNAME USERNAME PASSWORD]
+                         [--remove-account ACCOUNTID [ACCOUNTID ...]]
+                         [--get-conversations] [--add-conversation]
+                         [--remove-conversation] [--get-conversation-members]
+                         [--add-conversation-member USERID [USERID ...]]
+                         [--remove-conversation-member USERID [USERID ...]]
+                         [-a ACCOUNTID]
+                         [-c CONVERSATIONID [CONVERSATIONID ...]]
+                         [-m TEXT [TEXT ...]] [-f FILE [FILE ...]] [-w] [-z]
+                         [-k] [-j] [--split SEPARATOR] [--separator SEPARATOR]
+                         [-o TEXT|JSON] [-v [PRINT|CHECK]]
 
-You are running version 0.5.0 2024-08-25. Enjoy, star on Github and contribute
+You are running version 0.6.0 2024-08-25. Enjoy, star on Github and contribute
 by submitting a Pull Request.

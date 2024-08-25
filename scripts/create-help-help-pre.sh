@@ -18,7 +18,7 @@
 PATH=".:jami_commander/:$PATH"
 old_width=$(stty size | cut -d' ' -f2-)
 stty cols 1000
-jami-commander --manual | sed '1,/^options:/d' |
+jc --manual | sed '1,/^options:/d' |
     sed 's/^  //g' | sed '/^-/ s/  [ ]*/  \n                      /g' |
     sed '/^You are running/,$d' |
     sed -e :a -e '$!N;s/\(^ .*\)\n [ ]*/\1 /;ta' -e 'P;D' |

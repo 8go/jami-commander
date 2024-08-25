@@ -22,7 +22,8 @@ now = datetime.now()
 date_string = now.strftime("%Y%m%d-%H%M%S")
 
 readmemd = "README.md"
-filename = "jami_commander/jami_commander.py"
+#filename = "jami_commander/jami_commander.py"
+filename = "jc"
 
 if isfile(filename) and access(filename, R_OK):
     # so that subprocess can execute it without PATH
