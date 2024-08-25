@@ -5,5 +5,4 @@ dbus-python
 emoji
 markdown
 PyGObject # for controller.py:from gi.repository import GLib
-setuptools # for pkg_resources
 uuid

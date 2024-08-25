@@ -35,20 +35,20 @@ import time
 import traceback
 import urllib.request
 import uuid
+from importlib import metadata
 from os import R_OK, access
 from os.path import isfile
 from typing import Literal, Union
 
 import emoji
 import markdown
-import pkg_resources
 
 # local
 from .controller import libjamiCtrl
 
 # version number
 VERSION = "2024-08-25"
-VERSIONNR = "0.7.0"
+VERSIONNR = "0.8.0"
 # jami-commander; for backwards compitability replace _ with -
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0].replace(
     "_", "-"
@@ -1258,9 +1258,24 @@ def check_version() -> None:
     pkg = PROG_WITHOUT_EXT
     ver = VERSIONNR  # default, fallback
     try:
-        ver = pkg_resources.get_distribution(pkg).version
-    except Exception:
+        ver_pip = metadata.version(pkg)  # from installed pip package
+    except Exception as e:
+        gs.log.debug(
+            f"Failed to get version from meta-data of pip package {pkg}. "
+            f"Exception {e}"
+        )
         pass  # if installed via git clone, package will not exists
+    else:
+        if ver_pip != ver:
+            gs.log.info(
+                f"Looks like you have 2 versions of {pkg} installed. "
+                f"One version via pip with version number {ver_pip}. "
+                f"And another version outside of pip with version {ver}. "
+                "You are currently executing the version outside of pip "
+                f"with version number {ver}. We advise you on whether to "
+                "upgrade the version you are currently running."
+            )
+    gs.log.debug(f"Version of currently executed package {pkg} is {ver}.")
 
     installed_version = LooseVersion(ver)
     # fetch package metadata from PyPI
@@ -1283,7 +1298,7 @@ def check_version() -> None:
         else:
             utd = "Consider updating!"
     version_info = (
-        f"package: {pkg}, installed: {installed_version}, "
+        f"package: {pkg}, running: {installed_version}, "
         f"latest: {latest_version} ==> {utd}"
     )
     gs.log.debug(version_info)
@@ -1291,7 +1306,7 @@ def check_version() -> None:
     text = version_info
     json_ = {
         "package": f"{pkg}",
-        "version_installed": f"{installed_version}",
+        "version_running": f"{installed_version}",
         "version_latest": f"{latest_version}",
         "comment": f"{utd}",
     }

@@ -33,37 +33,37 @@ select opt in "${options[@]}"; do
     esac
 done
 
-PS3='Please enter your choice: '
-OPT1="tests/test-send.py # run this testcase"
-OPT2="tests/test-delete.sh # run this testcase"
-OPT3="tests/test-event.sh # run this testcase"
-OPT4="tests/test-rest.sh # run this testcase"
-OPT5="tests/test-setget.sh # run this testcase"
-OPT6="tests/test-upload.sh # run this testcase"
-OPTC="Continue"
-OPTQ="Quit"
-options=("$OPT1" "$OPT2" "$OPT3" "$OPT4" "$OPT5" "$OPT6" "$OPTC" "$OPTQ")
-select opt in "${options[@]}"; do
-    if [ "${REPLY,,}" == "c" ]; then opt="$OPTC"; fi
-    if [ "${REPLY,,}" == "q" ]; then opt="$OPTQ"; fi
-    case ${opt} in
-    "$OPT1" | "$OPT2" | "$OPT3" | "$OPT4" | "$OPT5" | "$OPT6")
-        OPTE=${opt%%#*} # remove everything after first #
-        echo "Performing: $OPTE"
-        $OPTE
-        continue
-        ;;
-    "$OPTC")
-        echo "On to next step."
-        break
-        ;;
-    "$OPTQ")
-        echo "Quitting program."
-        exit 0
-        ;;
-    *) echo "invalid option $REPLY" ;;
-    esac
-done
+# PS3='Please enter your choice: '
+# OPT1="tests/test-send.py # run this testcase"
+# OPT2="tests/test-delete.sh # run this testcase"
+# OPT3="tests/test-event.sh # run this testcase"
+# OPT4="tests/test-rest.sh # run this testcase"
+# OPT5="tests/test-setget.sh # run this testcase"
+# OPT6="tests/test-upload.sh # run this testcase"
+# OPTC="Continue"
+# OPTQ="Quit"
+# options=("$OPT1" "$OPT2" "$OPT3" "$OPT4" "$OPT5" "$OPT6" "$OPTC" "$OPTQ")
+# select opt in "${options[@]}"; do
+#     if [ "${REPLY,,}" == "c" ]; then opt="$OPTC"; fi
+#     if [ "${REPLY,,}" == "q" ]; then opt="$OPTQ"; fi
+#     case ${opt} in
+#     "$OPT1" | "$OPT2" | "$OPT3" | "$OPT4" | "$OPT5" | "$OPT6")
+#         OPTE=${opt%%#*} # remove everything after first #
+#         echo "Performing: $OPTE"
+#         $OPTE
+#         continue
+#         ;;
+#     "$OPTC")
+#         echo "On to next step."
+#         break
+#         ;;
+#     "$OPTQ")
+#         echo "Quitting program."
+#         exit 0
+#         ;;
+#     *) echo "invalid option $REPLY" ;;
+#     esac
+# done
 
 PS3='Please enter your choice: '
 OPT1="scripts/update-1-version.sh --mayor # increment MAJOR version number, incompatible"
@@ -104,14 +104,15 @@ done
 PS3='Please enter your choice: '
 OPT1="git add dist/ # must do this! commit -a will not include them"
 OPT2="git status # what is the current status"
+OPT3="git add VERSION help.help.txt help.manual.txt help.usage.txt jami_commander/jami_commander.py  setup.cfg"
 OPTC="Continue"
 OPTQ="Quit"
-options=("$OPT1" "$OPT2" "$OPTC" "$OPTQ")
+options=("$OPT1" "$OPT2" "$OPT3" "$OPTC" "$OPTQ")
 select opt in "${options[@]}"; do
     if [ "${REPLY,,}" == "c" ]; then opt="$OPTC"; fi
     if [ "${REPLY,,}" == "q" ]; then opt="$OPTQ"; fi
     case ${opt} in
-    "$OPT1" | "$OPT2")
+    "$OPT1" | "$OPT2" | "$OPT3")
         OPTE=${opt%%#*} # remove everything after first #
         echo "Performing: $OPTE"
         $OPTE

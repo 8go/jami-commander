@@ -10,7 +10,6 @@ The objective of `jami-commander` is to:
 
 + be able to use `Jami` from the terminal, the CLI, via SSH, and on head-less servers without monitor.
 + to use minimal resources. No Jami front-end (GUI) needs to be installed.
-+ to be able to run it e.g. on a headless Raspberry Pi
 + to be able to perform minimal operations to run a bot, e.g. to publish daily weather information
 + be simple. It is written in Python.
 
