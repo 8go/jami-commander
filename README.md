@@ -41,7 +41,8 @@ Functionality is minimal. You are invited to help to improve `jami-commander`. P
   + try `jami-commander -h` first to see what is available
 + alternatively, if you do not want to install via `pip` and just want to download the files from this repo,
   then you can run the program, by `cd`-ing into the root project directory
-  and then running a command like `python -m jami_commander.jami_commander  --help`.
+  and then running a command like
+  + `python -m jami_commander.jami_commander  --help`.
 
 # Features
 
