@@ -23,10 +23,10 @@ Functionality is minimal. You are invited to help to improve `jami-commander`. P
   + `sudo dnf-3 config-manager --add-repo https://dl.jami.net/stable/fedora_40/jami-stable.repo # add the Jami repo`
   + `sudo dnf install jami-daemon # install only the jamid daemon`
   + e.g. on Ubuntu 24.04 (see https://jami.net/download-jami-linux/ for details)
-  + ```sudo apt install gnupg dirmngr ca-certificates curl --no-install-recommends
-curl -s https://dl.jami.net/public-key.gpg | sudo tee /usr/share/keyrings/jami-archive-keyring.gpg > /dev/null
-sudo sh -c "echo 'deb [signed-by=/usr/share/keyrings/jami-archive-keyring.gpg] https://dl.jami.net/stable/ubuntu_24.04/ jami main' > /etc/apt/sources.list.d/jami.list"
-sudo apt-get update && sudo apt-get install jami-daemon # install only the jamid daemon```
+  + `sudo apt install gnupg dirmngr ca-certificates curl --no-install-recommends`
+  + `curl -s https://dl.jami.net/public-key.gpg | sudo tee /usr/share/keyrings/jami-archive-keyring.gpg > /dev/null`
+  + `sudo sh -c "echo 'deb [signed-by=/usr/share/keyrings/jami-archive-keyring.gpg] https://dl.jami.net/stable/ubuntu_24.04/ jami main' > /etc/apt/sources.list.d/jami.list"`
+  + `sudo apt-get update && sudo apt-get install jami-daemon # install only the jamid daemon`
   + This installs around 204MB on Ubuntu
 + second install dependencies
   + e.g. Ubuntu 24.04
