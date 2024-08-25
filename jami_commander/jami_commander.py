@@ -48,7 +48,7 @@ from .controller import libjamiCtrl
 
 # version number
 VERSION = "2024-08-25"
-VERSIONNR = "0.6.0"
+VERSIONNR = "0.7.0"
 # jami-commander; for backwards compitability replace _ with -
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0].replace(
     "_", "-"

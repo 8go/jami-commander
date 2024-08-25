@@ -15,5 +15,5 @@ usage: jami_commander.py [--usage] [-h] [--manual] [--readme] [-d]
                          [-k] [-j] [--split SEPARATOR] [--separator SEPARATOR]
                          [-o TEXT|JSON] [-v [PRINT|CHECK]]
 
-You are running version 0.6.0 2024-08-25. Enjoy, star on Github and contribute
+You are running version 0.7.0 2024-08-25. Enjoy, star on Github and contribute
 by submitting a Pull Request.
